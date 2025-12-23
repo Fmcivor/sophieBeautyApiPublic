@@ -80,5 +80,13 @@ namespace sophieBeautyApi.Controllers
             return Ok(true);
         }
 
+
+        [Authorize]
+        [HttpPost("remindBookings")]
+        public async Task<ActionResult> remindBookings()
+        {
+            await _adminService.remindBookings();
+            return Ok();
+        }
     }
 }

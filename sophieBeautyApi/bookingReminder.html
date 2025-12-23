@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Booking Reminder — Shaped By Sophiee</title>
+  <style>
+    body,table,td,a{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table,td{ mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img{ -ms-interpolation-mode:bicubic; }
+    img{ border:0; height:auto; line-height:100%; outline:none; text-decoration:none; }
+    table{ border-collapse:collapse !important; }
+    body{ margin:0; padding:0; width:100% !important; height:100% !important; background-color:#fffaf8; font-family: Arial, Helvetica, sans-serif; color:#2b2b2b; }
+
+    .email-wrapper{ width:100%; background-color:#fffaf8; padding:24px 0; }
+    .email-content{ max-width:680px; margin:0 auto; }
+
+    .card{ background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(43,43,43,0.06); }
+
+    .brand{ padding:20px; display:flex; align-items:center; gap:12px; }
+    .logo{ width:56px; height:56px; border-radius:10px; display:inline-block; text-align:center; line-height:56px; font-weight:700; font-family: 'Georgia', serif; color:#b56b9b; background: #fff2f9; }
+
+    .content-body{ padding:20px; }
+    h1{ font-size:20px; margin:0 0 8px 0; color:#2b2b2b; font-family: 'Georgia', serif; }
+    p.lead{ margin:0 0 16px 0; color:#6b6b6b; font-size:14px; }
+
+    .details{ width:100%; border-radius:8px; border:1px solid rgba(181,107,155,0.07); background: linear-gradient(180deg, rgba(181,107,155,0.02), transparent); padding:12px; }
+    .detail-row{ padding:10px 0; border-bottom:1px dashed rgba(43,43,43,0.04); font-size:14px; display:block; }
+    .detail-row:last-child{ border-bottom:none; }
+    .label{ color:#6b6b6b; font-size:13px; margin-top:6px; }
+    .value{ font-weight:700; color:#2b2b2b; font-size:14px; margin-top:2px; }
+
+    .treatmentList{
+      font-weight:700; color:#2b2b2b; font-size:14px; margin-top:2px;
+    }
+    
+    .footer{ padding:16px 20px; font-size:13px; color:#6b6b6b; text-align:center; }
+
+    @media screen and (max-width:520px) {
+      .brand{ padding:16px; }
+      .logo{ width:48px; height:48px; line-height:48px; font-size:18px; }
+      .content-body{ padding:16px; }
+    }
+  </style>
+</head>
+<body>
+  <center class="email-wrapper">
+    <div class="email-content" role="article" aria-roledescription="email">
+
+      <table class="card" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:680px;">
+        <tr>
+          <td>
+
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td style="padding:18px 20px;">
+                  <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+                    <tr>
+                      <td valign="middle">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                          <div class="logo" aria-hidden="true" style="font-family:'Playfair Display',serif;">SB</div>
+                          <div>
+                            <div style="font-size:18px;font-weight:700;color:#2b2b2b;">Shaped By Sophiee</div>
+                            <div style="font-size:13px;color:#6b6b6b;">Brows • Lashes • Spray Tans</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td align="right">
+                        <a href="https://shapedbysophiee.netlify.app/" style="font-size:13px;color:#6b6b6b;text-decoration:none;">Visit website</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td class="content-body">
+                  <h1>Booking Reminder </h1>
+                  <p class="lead">This is just a reminder for your appointment on the {{start_datetime}}. If you need to make any changes <a href="{{contact_url}}" style="color:#b56b9b;text-decoration:none;">contact us</a>.</p>
+
+                  <div class="details" style="margin-bottom:16px;">
+
+                    <div class="detail-row">
+                      <div class="label">Client</div>
+                      <div class="value">{{customer_name}}</div>
+                      <div class="label">Price</div>
+                      <div class="value">{{price}}</div>
+                    </div>
+
+                    <div class="detail-row">
+                      <div class="label">Treatments</div>
+                      <div class="treatmentList">{{service_name}}</div>
+                      <div class="label">Duration</div>
+                      <div class="value">{{duration}}</div>
+                    </div>
+
+                    <div class="detail-row" style="margin-bottom:20px;">
+                      <div class="label">Date & time</div>
+                      <div class="value">{{start_datetime}}</div>
+                      <div class="label">Payment</div>
+                      <div class="value">{{payment_method}}</div>
+                    </div>
+
+                  </div>
+
+                  <p style="margin:0;color:#6b6b6b;font-size:13px;">Please arrive 5 minutes early. Please bring cash, as we currently do not offer card payments.</p>
+                </td>
+              </tr>
+            </table>
+
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#fff7f5;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                    <tr>
+                      <td>
+                        <div style="font-size:14px;font-weight:700;color:#2b2b2b;">Shaped By Sophiee</div>
+                        <div style="font-size:13px;color:#6b6b6b;">10 College Mews, Limavady BT49 0UT</div>
+                        <div style="font-size:13px;color:#6b6b6b; margin-top:8px;">
+                          &nbsp; • &nbsp;
+                          Instagram: <a href="https://www.instagram.com/shapedbysophiee" style="color:#6b6b6b;text-decoration:none;">@shapedbysophiee</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+      </table>
+
+      <div class="footer">
+        If you didn’t make this booking or need help, please <a href="{{contact_url}}" style="color:#b56b9b;text-decoration:none;">contact us</a>.<br>
+        You’re receiving this because you booked at Shaped By Sophiee. <span style="color:#9b9b9b;">© Shaped By Sophiee 2025</span>
+      </div>
+
+    </div>
+  </center>
+</body>
+</html>

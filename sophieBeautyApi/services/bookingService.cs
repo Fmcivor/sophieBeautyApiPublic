@@ -44,6 +44,14 @@ namespace sophieBeautyApi.services
             return result.ModifiedCount > 0;
         }
 
+        public async Task<bool> markReminderSent(booking updatedBooking)
+        {
+            var filter = Builders<booking>.Filter.Eq(b => b.Id, updatedBooking.Id);
+            var update = Builders<booking>.Update.Set(b => b.reminderSent, true);
+            var result = await bookingsTable.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
         public async Task<bool> delete(string id)
         {
             var filter = Builders<booking>.Filter.Eq(b => b.Id, id);
@@ -120,7 +128,7 @@ namespace sophieBeautyApi.services
 
         // }
 
-       
+    
 
         public async Task<IEnumerable<booking>> getTodaysBooking(DateTime date)
         {
@@ -132,12 +140,22 @@ namespace sophieBeautyApi.services
 
         }
 
-         public async Task<IEnumerable<booking>> getUpcomingBookings(DateTime date)
+        public async Task<IEnumerable<booking>> getUpcomingBookings(DateTime date)
         {
             var start = date.Date;
             
 
             var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            return bookings;
+
+        }
+
+        public async Task<IEnumerable<booking>> getNextDayBookings(DateTime date)
+        {
+            var start = date.Date.AddDays(1);
+            var end = start.AddDays(1);
+
+            var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.appointmentDate < end && b.bookingStatus == booking.status.Confirmed).ToListAsync();
             return bookings;
 
         }
