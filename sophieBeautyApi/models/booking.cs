@@ -45,6 +45,8 @@ namespace sophieBeautyApi.Models
 
         public string? stripeId { get; set; }
 
+        [Required]
+        public bool reminderSent { get; set; }
 
 
         public enum status
@@ -75,6 +77,7 @@ namespace sophieBeautyApi.Models
             this.payByCard = payByCard;
             this.paid = paid;
             this.bookingStatus = bookingStatus;
+            this.reminderSent = false;
         }
 
     }

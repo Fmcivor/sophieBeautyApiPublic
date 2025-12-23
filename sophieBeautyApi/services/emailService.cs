@@ -136,6 +136,59 @@ namespace sophieBeautyApi.services
 
         }
 
+        public async Task sendReminder(booking booking)
+        {
+            try
+            {
+                var client = new EmailClient(_config["AzureEmailConnString"]);
+
+                var filePath = Path.Combine(AppContext.BaseDirectory, "bookingReminder.html");
+                string htmlBody = File.ReadAllText(filePath);
+
+                var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+                var treatmentTime = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, ukZone);
+                string formattedDate = treatmentTime.ToString("dd/MM/yyyy HH:mm");
+
+                string treatmentHtml = "";
+
+                foreach (var treatment in booking.treatmentNames)
+                {
+                    treatmentHtml += "<div>" + treatment + "</div>";
+                }
+
+                htmlBody = htmlBody.Replace("{{customer_name}}", booking.customerName);
+                htmlBody = htmlBody.Replace("{{service_name}}", treatmentHtml);
+                htmlBody = htmlBody.Replace("{{start_datetime}}", formattedDate);
+                htmlBody = htmlBody.Replace("{{price}}", "£" + booking.cost.ToString());
+                htmlBody = htmlBody.Replace("{{duration}}", booking.duration.ToString() + " Minutes");
+                htmlBody = htmlBody.Replace("{{payment_method}}", "Cash");
+                htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");
+
+                var emailMessage = new EmailMessage(
+                    senderAddress: "DoNotReply@shapedbysophiee.com",
+                    content: new EmailContent("Booking Reminder - "+booking.customerName+" - "+formattedDate)
+                    {
+                        PlainText = @"Reminder for your upcoming appointment at shaped by sophiee on the " + formattedDate,
+                        Html = htmlBody
+                    },
+                    recipients: new EmailRecipients(new List<EmailAddress>
+                    {
+                        new EmailAddress(booking.email)
+                    }));
+
+
+                EmailSendOperation emailSendOperation = client.Send(
+                    WaitUntil.Started,
+                    emailMessage);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Azure Email Error: " + ex.Message);
+                if (ex.InnerException != null)
+                    Console.WriteLine(ex.InnerException.Message);
+            }
+        }
 
         public async Task notifyNewBooking(booking newBooking)
         {

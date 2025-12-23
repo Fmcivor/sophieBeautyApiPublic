@@ -27,6 +27,10 @@
   <None Update="bookingNotification.html">
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </None>
+
+  <None Update="bookingReminder.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
 </ItemGroup>
 
 

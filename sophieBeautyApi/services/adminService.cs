@@ -16,10 +16,15 @@ namespace sophieBeautyApi.services
         private readonly IMongoCollection<admin> _adminTable;
         private readonly MongoClient _mongoClient;
 
-        public adminService(MongoClient mongoClient)
+        private readonly bookingService _bookingService;
+        private readonly emailService _emailService;
+
+        public adminService(MongoClient mongoClient, emailService emailService, bookingService bookingService)
         {
             _mongoClient = mongoClient;
             var database = _mongoClient.GetDatabase("SophieBeauty");
+            _bookingService = bookingService;
+            _emailService = emailService;
             _adminTable = database.GetCollection<admin>("admins");
         }
 
@@ -74,8 +79,19 @@ namespace sophieBeautyApi.services
         }
 
 
-        
+        public async Task remindBookings()
+        {
+            var bookings = await _bookingService.getNextDayBookings(DateTime.UtcNow);
+            foreach (var booking in bookings)
+            {
+                if (booking.reminderSent == false)
+                {
 
-        
+                await _emailService.sendReminder(booking);
+                await _bookingService.markReminderSent(booking);
+                }
+            }
+        }
+
     }
 }
