@@ -1,82 +1,139 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
-    public class bookingService
+    public class bookingService : IBookingService
     {
-        private readonly IMongoCollection<booking> bookingsTable;
-        private readonly MongoClient _mongoClient;
+        private readonly IBookingRepository _bookingRepository;
 
-        public bookingService(MongoClient mongoClient)
+        private readonly IAvailabilitySlotService _availabilityService;
+        private readonly ITreatmentService _treatmentService;
+        private readonly IEmailService _emailService;
+
+        public bookingService(IBookingRepository bookingRepository, IAvailabilitySlotService availablilitySlotService, ITreatmentService treatmentService,
+        IEmailService emailService)
         {
-            _mongoClient = mongoClient;
-            var database = _mongoClient.GetDatabase("SophieBeauty");
-            bookingsTable = database.GetCollection<booking>("bookings");
+            this._bookingRepository = bookingRepository;
+            this._availabilityService = availablilitySlotService;
+            this._treatmentService = treatmentService;
+            this._emailService = emailService;
         }
 
         public async Task<IEnumerable<booking>> getAll()
         {
-            var bookings = await bookingsTable.Find(b => true).ToListAsync();
+            var bookings = await _bookingRepository.GetAllAsync();
+
+
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            foreach (var b in bookings)
+            {
+                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
+            }
 
             return bookings;
         }
 
-        public async Task<booking> create(booking newBooking)
+        public async Task<BookingResult> create(newBookingDTO newBooking)
         {
-            await bookingsTable.InsertOneAsync(newBooking);
+            var treatments = await _treatmentService.getListByIds(newBooking.treatmentIds);
 
-            return newBooking;
+            List<string> treatmentNames = new List<string>();
+            int duration = 0;
+            int price = 0;
+
+            foreach (var t in treatments)
+            {
+                treatmentNames.Add(t.name);
+                duration += t.duration;
+                price += t.price;
+            }
+
+            duration = (int)(Math.Ceiling(duration / 30.0) * 30);
+
+            bool paid = false;
+            if (newBooking.payByCard)
+            {
+                paid = true;
+            }
+
+            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed);
+
+        
+
+            bool withinAvailableTimeSlot = await _availabilityService.bookingWithinAvailabilitySlot(booking.appointmentDate, booking.duration);
+
+            if (!withinAvailableTimeSlot)
+            {
+                return new BookingResult("TAKEN");
+            }
+
+            var created = await _bookingRepository.CreateAsync(booking);
+
+            // Null check
+            if (created == null)
+            {
+                return new BookingResult("SERVER_ERROR");
+            }
+
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+            created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
+
+            await _emailService.Send(created);
+
+            
+
+            return new BookingResult(created);
         }
 
 
         public async Task<booking?> getById(string id)
         {
-            var filter = Builders<booking>.Filter.Eq(b => b.Id, id);
-            return await bookingsTable.Find(filter).FirstOrDefaultAsync();
+            return await _bookingRepository.GetByIdAsync(id);
         }
 
         public async Task<bool> update(booking updatedBooking)
         {
-            var filter = Builders<booking>.Filter.Eq(b => b.Id, updatedBooking.Id);
-            var result = await bookingsTable.ReplaceOneAsync(filter, updatedBooking);
-            return result.ModifiedCount > 0;
+            if (updatedBooking.Id == null)
+            {
+                return false;
+            }
+
+            var result = await _bookingRepository.UpdateAsync(updatedBooking);
+            return result;
         }
 
         public async Task<bool> markReminderSent(booking updatedBooking)
         {
-            var filter = Builders<booking>.Filter.Eq(b => b.Id, updatedBooking.Id);
-            var update = Builders<booking>.Update.Set(b => b.reminderSent, true);
-            var result = await bookingsTable.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            var result = await _bookingRepository.MarkReminderSentAsync(updatedBooking);
+            return result;
         }
 
-        public async Task<bool> delete(string id)
+        public async Task<BookingResult> delete(string id)
         {
-            var filter = Builders<booking>.Filter.Eq(b => b.Id, id);
-            var result = await bookingsTable.DeleteOneAsync(filter);
-            return result.DeletedCount > 0;
+
+            var booking = await _bookingRepository.GetByIdAsync(id);
+
+            if (booking == null)
+            {
+                return new BookingResult("NOT_FOUND");
+            }
+
+            var succeeded = await _bookingRepository.DeleteAsync(id);
+
+            if (!succeeded)
+            {
+                return new BookingResult("SERVER_ERROR");
+            }
+
+            await _emailService.sendCancellation(booking);
+            return new BookingResult(booking);
         }
 
-        public async Task<IEnumerable<booking>> bookingsByDate(DateTime date)
-        {
-            var start = date.Date;
-            var end = start.AddDays(1);
-
-            var filter = Builders<booking>.Filter.Gte(b => b.appointmentDate, start) &
-                         Builders<booking>.Filter.Lt(b => b.appointmentDate, end);
-
-            var bookings = await bookingsTable.Find(filter).ToListAsync();
-            return bookings;
-        }
-
-        public async Task<booking> bookingOnDate(DateTime date)
-        {
-            var booking = await bookingsTable.Find(b => b.appointmentDate == date).FirstOrDefaultAsync();
-
-            return booking;
-        }
 
         // public async Task<List<TimeSpan>> getAvailableTimes(DateTime date)
         // {
@@ -135,7 +192,15 @@ namespace sophieBeautyApi.services
             var start = date.Date;
             var end = start.AddDays(1);
 
-            var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.appointmentDate < end && b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            var bookings = await _bookingRepository.GetTodaysBookingAsync(start, end); 
+
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+            foreach (booking b in bookings)
+            {
+                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
+            }
+
             return bookings;
 
         }
@@ -145,7 +210,14 @@ namespace sophieBeautyApi.services
             var start = date.Date;
             
 
-            var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            var bookings = await _bookingRepository.GetUpcomingBookingsAsync(start);
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+            foreach (booking b in bookings)
+            {
+                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
+            }
+
             return bookings;
 
         }
@@ -155,7 +227,7 @@ namespace sophieBeautyApi.services
             var start = date.Date.AddDays(1);
             var end = start.AddDays(1);
 
-            var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.appointmentDate < end && b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            var bookings = await _bookingRepository.GetNextDayBookingsAsync(start,end);
             return bookings;
 
         }
@@ -167,20 +239,17 @@ namespace sophieBeautyApi.services
 
             var currentMonday = date.Date.AddDays(-day);
             var previousMonday = currentMonday.AddDays(-7);
-            var end = currentMonday;
+            
 
-            var bookings = await bookingsTable.Find(b => b.appointmentDate >= previousMonday && b.appointmentDate < currentMonday && b.bookingStatus == booking.status.Completed).ToListAsync();
+            var bookings = await _bookingRepository.getBookingsByDateRange(previousMonday, currentMonday,booking.status.Confirmed);
+            int revenue = bookings.Sum(b => b.cost);
 
-            int revenue = 0;
-
-            foreach (booking b in bookings)
-            {
-                revenue += b.cost;
-            }
 
             return revenue;
 
         }
+
+        
 
         public async Task<int> getMonthlyRevenue(DateTime date)
         {
@@ -191,15 +260,11 @@ namespace sophieBeautyApi.services
             var end = start.AddMonths(1);
 
 
-            var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.appointmentDate < end && b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            var bookings = await _bookingRepository.getBookingsByDateRange(start, end, booking.status.Confirmed);
 
-            int revenue = 0;
+            int revenue = bookings.Sum(b => b.cost);
 
-            foreach (booking b in bookings)
-            {
-                revenue += b.cost;
-            }
-
+            
             return revenue;
 
         }

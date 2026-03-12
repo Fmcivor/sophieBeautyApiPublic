@@ -13,12 +13,10 @@ namespace sophieBeautyApi.Controllers
     public class availablilitySlotController : ControllerBase
     {
         private readonly availablilitySlotService _availabilitySlotService;
-        private readonly bookingService _bookingService;
 
-        public availablilitySlotController(availablilitySlotService availablilitySlotService, bookingService bookingService)
+        public availablilitySlotController(availablilitySlotService availablilitySlotService)
         {
             _availabilitySlotService = availablilitySlotService;
-            _bookingService = bookingService;
         }
 
 
@@ -52,23 +50,12 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest(ModelState);
             }
 
-
-
-            var existingSlots = await _availabilitySlotService.getSlotsByDate(DateTime.ParseExact(slot.date, "yyyy-MM-dd", CultureInfo.InvariantCulture));
-
-            if (existingSlots.Count() > 0)
-            {
-                foreach (var s in existingSlots)
-                {
-                    if (!(slot.endTime < s.startTime || slot.startTime > s.endTime))
-                    {
-                        return BadRequest("Overlapping availability slot");
-                    }
-
-                }
-            }
-
             var newSlot = await _availabilitySlotService.create(slot);
+
+            if (newSlot == null)
+            {
+                return BadRequest("Overlapping availability slot");
+            }
 
             return CreatedAtAction(nameof(create), newSlot);
 
@@ -102,48 +89,48 @@ namespace sophieBeautyApi.Controllers
         }
 
 
-        [HttpPost("availableTimes")]
-        public async Task<ActionResult<IEnumerable<TimeSpan>>> getAvailableTimes([FromBody] DateTime date)
-        {
+        // [HttpPost("oldAvailableTimes")]
+        // public async Task<ActionResult<IEnumerable<TimeSpan>>> getAvailableTimes([FromBody] DateTime date)
+        // {
 
-            var slots = await _availabilitySlotService.getSlotsByDate(date);
+        //     var slots = await _availabilitySlotService.getSlotsByDate(date);
 
-            var allTimes = new List<TimeSpan>();
+        //     var allTimes = new List<TimeSpan>();
 
-            var bookingsOnDate = await _bookingService.bookingsByDate(date);
+        //     var bookingsOnDate = await _bookingService.bookingsByDate(date);
 
-            var localZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-
-
-
-            foreach (availablilitySlot slot in slots)
-            {
-                for (TimeSpan i = slot.startTime; i <= slot.endTime; i = i.Add(TimeSpan.FromHours(1)))
-                {
-                    bool slotTaken = false;
-                    int bookingDuration = 0;
-                    if (bookingsOnDate.Any(b => TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay == i))
-                    {
-                        slotTaken = true;
-                        bookingDuration = bookingsOnDate.FirstOrDefault(b => TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay == i).duration;
-                        if (bookingDuration > 60)
-                        {
-                            i += TimeSpan.FromMinutes(bookingDuration - 60);
-                        }
-                    }
+        //     var localZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
 
 
-                    if (!slotTaken)
-                    {
-                        allTimes.Add(i);
-                    }
-                }
-            }
 
-            return Ok(allTimes);
-        }
+        //     foreach (availablilitySlot slot in slots)
+        //     {
+        //         for (TimeSpan i = slot.startTime; i <= slot.endTime; i = i.Add(TimeSpan.FromHours(1)))
+        //         {
+        //             bool slotTaken = false;
+        //             int bookingDuration = 0;
+        //             if (bookingsOnDate.Any(b => TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay == i))
+        //             {
+        //                 slotTaken = true;
+        //                 bookingDuration = bookingsOnDate.FirstOrDefault(b => TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay == i).duration;
+        //                 if (bookingDuration > 60)
+        //                 {
+        //                     i += TimeSpan.FromMinutes(bookingDuration - 60);
+        //                 }
+        //             }
+
+
+
+        //             if (!slotTaken)
+        //             {
+        //                 allTimes.Add(i);
+        //             }
+        //         }
+        //     }
+
+        //     return Ok(allTimes);
+        // }
 
 
 
@@ -151,54 +138,25 @@ namespace sophieBeautyApi.Controllers
         [HttpDelete("deleteAll")]
         public async Task<ActionResult> deleteAll()
         {
+            bool success = await _availabilitySlotService.deleteAll();
 
-            await _availabilitySlotService.deleteAll();
-
-            return NotFound();
-        }
-
-
-
-        [HttpPost("TestavailableTimes")]
-        public async Task<ActionResult<IEnumerable<TimeSpan>>> testGetTimes([FromBody] availableTimesRequest request)
-        {
-
-            var slots = await _availabilitySlotService.getSlotsByDate(request.date);
-
-            var allTimes = new List<TimeSpan>();
-
-            var bookingsOnDate = await _bookingService.bookingsByDate(request.date);
-
-            var localZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            // check all availability slots
-            foreach (availablilitySlot slot in slots)
+            if (!success)
             {
-                for (TimeSpan i = slot.startTime; i <= slot.endTime; i = i.Add(TimeSpan.FromHours(0.5)))
-                {
-                    bool slotTaken = bookingsOnDate.Any(b =>
-                    {
-                        TimeSpan slotStart = i;
-                        TimeSpan slotEnd = i.Add(TimeSpan.FromMinutes(request.bookingDuration));
-                        TimeSpan existingStart = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay;
-                        TimeSpan existingEnd = existingStart.Add(TimeSpan.FromMinutes(b.duration));
-
-                        if (slotStart < existingEnd && slotEnd > existingStart)
-                        {
-                            return true;
-                        }
-                        return false;
-                    });
-
-                    if (!slotTaken)
-                    {
-                        allTimes.Add(i);
-                    }
-                }
+                return StatusCode(500, "Failed to delete all slots");
             }
 
-            return Ok(allTimes);
+            return NoContent();
         }
+
+
+
+        [HttpPost("availableTimes")]
+        public async Task<ActionResult<IEnumerable<TimeSpan>>> testGetTimes([FromBody] availableTimesRequest request)
+        {
+            var times = await _availabilitySlotService.getAvailableTimes(request);
+            return Ok(times);
+        } 
+        
 
 
 

@@ -9,10 +9,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
-    public class emailService
+    public class emailService : IEmailService
     {
 
         private readonly IConfiguration _config;
@@ -121,7 +122,7 @@ namespace sophieBeautyApi.services
                     }));
 
 
-                EmailSendOperation emailSendOperation = client.Send(
+                EmailSendOperation emailSendOperation = await client.SendAsync(
                     WaitUntil.Started,
                     emailMessage);
 
@@ -177,7 +178,7 @@ namespace sophieBeautyApi.services
                     }));
 
 
-                EmailSendOperation emailSendOperation = client.Send(
+                EmailSendOperation emailSendOperation = await client.SendAsync(
                     WaitUntil.Started,
                     emailMessage);
 
@@ -231,7 +232,7 @@ namespace sophieBeautyApi.services
                     }));
 
 
-                EmailSendOperation emailSendOperation = client.Send(
+                EmailSendOperation emailSendOperation = await client.SendAsync(
                     WaitUntil.Started,
                     emailMessage);
 

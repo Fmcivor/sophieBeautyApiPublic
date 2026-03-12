@@ -1,39 +1,50 @@
-using Microsoft.AspNetCore.Http.HttpResults;
-using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
-    public class availablilitySlotService
+    public class availablilitySlotService: IAvailabilitySlotService
     {
 
-        private readonly IMongoCollection<availablilitySlot> _availabilitySlotTable;
-        private readonly MongoClient _mongoClient;
+        private readonly IAvailabilitySlotRepository _availabilitySlotRepository;
+        private readonly IBookingRepository _bookingRepository;
 
-        public availablilitySlotService(MongoClient mongoClient)
+        public availablilitySlotService(IAvailabilitySlotRepository availabilitySlotRepository, IBookingRepository bookingRepository)
         {
-            _mongoClient = mongoClient;
-            var database = _mongoClient.GetDatabase("SophieBeauty");
-            _availabilitySlotTable = database.GetCollection<availablilitySlot>("availabilitySlots");
+            this._availabilitySlotRepository = availabilitySlotRepository;
+            this._bookingRepository = bookingRepository;
         }
 
 
         public async Task<IEnumerable<availablilitySlot>> getAll()
         {
-            var availabilitySlots = await _availabilitySlotTable.Find(a => true).ToListAsync();
+            var availabilitySlots = await _availabilitySlotRepository.GetAllAsync();
 
             return availabilitySlots;
         }
 
 
-        public async Task<availablilitySlot> create(availablilitySlot newSlot)
+        public async Task<availablilitySlot?> create(availablilitySlot newSlot)
         {
-            await _availabilitySlotTable.InsertOneAsync(newSlot);
+            var existingSlots = await getSlotsByDate(DateTime.ParseExact(newSlot.date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
 
-            return newSlot;
+            // Check for overlapping slots
+            if (existingSlots.Any())
+            {
+                foreach (var slot in existingSlots)
+                {
+                    if (!(newSlot.endTime < slot.startTime || newSlot.startTime > slot.endTime))
+                    {
+                        return null;  // Overlap detected
+                    }
+                }
+            }
+
+            return await _availabilitySlotRepository.CreateAsync(newSlot);
         }
 
-        public async Task<bool> bookingWithinAvailabilitySlot(DateTime apptTime)
+        public async Task<bool> bookingWithinAvailabilitySlot(DateTime apptTime, int duration)
         {
             var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
@@ -48,48 +59,111 @@ namespace sophieBeautyApi.services
 
 
             var bookingTime = bookingUkFullDate.TimeOfDay;
+            var bookingEnd = bookingTime.Add(TimeSpan.FromMinutes(duration));
+
+            bool withinSlot = false;
 
             foreach (availablilitySlot slot in slotsOnDate)
             {
-
-
-                if (bookingTime >= slot.startTime && bookingTime <= slot.endTime)
+                if (bookingTime >= slot.startTime && bookingEnd <= slot.endTime)
                 {
-                    return true;
+                    withinSlot = true;
+                    break;
                 }
             }
 
-            return false;
+            if (withinSlot == false)
+            {
+                return false;
+            }
+
+            var start = apptTime.Date;
+            var end = start.AddDays(1);
+
+            var existingBookings = await _bookingRepository.GetBookingsByDateAsync(start, end);
+            var localZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+            bool overlap = false;
+
+            overlap = existingBookings.Any(b =>
+            {
+                TimeSpan existingStart = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay;
+                TimeSpan existingEnd = existingStart.Add(TimeSpan.FromMinutes(b.duration));
+                return bookingTime < existingEnd && bookingEnd > existingStart;
+            });
+
+            if (overlap)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public async Task<bool> delete(availablilitySlot slot)
         {
-            var filter = Builders<availablilitySlot>.Filter.Eq(a => a.Id, slot.Id);
-
-            var result = await _availabilitySlotTable.DeleteOneAsync(filter);
-
-            return result.DeletedCount == 1;
+            return await _availabilitySlotRepository.DeleteAsync(slot);
         }
 
 
+        public async Task<IEnumerable<TimeSpan>> getAvailableTimes(availableTimesRequest request)
+        {
+
+            var slots = await getSlotsByDate(request.date);
+
+            var allTimes = new List<TimeSpan>();
+
+
+            var start = request.date.Date;
+            var end = start.AddDays(1);
+
+            var bookingsOnDate = await _bookingRepository.GetBookingsByDateAsync(start, end);
+
+            var localZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+            // check all availability slots
+            foreach (availablilitySlot slot in slots)
+            {
+                for (TimeSpan i = slot.startTime; i <= slot.endTime; i = i.Add(TimeSpan.FromHours(0.5)))
+                {
+                    bool slotTaken = bookingsOnDate.Any(b =>
+                    {
+                        TimeSpan slotStart = i;
+                        TimeSpan slotEnd = i.Add(TimeSpan.FromMinutes(request.bookingDuration));
+                        TimeSpan existingStart = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay;
+                        TimeSpan existingEnd = existingStart.Add(TimeSpan.FromMinutes(b.duration));
+
+                        if (slotStart < existingEnd && slotEnd > existingStart)
+                        {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    if (!slotTaken)
+                    {
+                        allTimes.Add(i);
+                    }
+                }
+            }
+
+            return allTimes;
+
+        }
 
 
 
         public async Task<IEnumerable<availablilitySlot>> getSlotsByDate(DateTime date)
         {
-            var slots = await _availabilitySlotTable.Find(a => a.date == date.ToString("yyyy-MM-dd")).ToListAsync();
-
-            return slots;
+            return await _availabilitySlotRepository.GetSlotsByDateAsync(date);
         }
 
 
 
         //dev only
-
         public async Task<bool> deleteAll()
         {
-            await _availabilitySlotTable.DeleteManyAsync(a => true);
-            return true;
+            return await _availabilitySlotRepository.DeleteAllAsync();
         }
 
     }
