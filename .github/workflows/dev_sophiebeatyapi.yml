@@ -4,7 +4,7 @@ name: Run Tests on Test Branch
 on:
   push:
     branches:
-      - interfaceArchitecture
+      - interfaceArchictecture
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
