@@ -30,4 +30,4 @@ jobs:
         run: dotnet build --configuration Debug --no-restore
 
       - name: Run Tests
-        run: dotnet test --configuration Debug --
+        run: dotnet test --configuration Debug --logger "console;verbosity=detailed"
