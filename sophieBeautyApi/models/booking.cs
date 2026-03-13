@@ -21,6 +21,10 @@ namespace sophieBeautyApi.Models
         [RegularExpression(@"^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$",ErrorMessage ="Email not of valid format.")]
         public string email { get; set; }
 
+
+        [RegularExpression(@"^[0-9]{7,11}$")]
+        public string? phoneNumber {get; set;}
+
         [Required]
         public DateTime appointmentDate { get; set; }
 
@@ -60,6 +64,7 @@ namespace sophieBeautyApi.Models
             string customerName,
             DateTime appointmentDate,
             string email,
+            string phoneNumber,
             List<string> treatmentNames,
             int cost,
             int duration,
@@ -71,6 +76,7 @@ namespace sophieBeautyApi.Models
             this.customerName = customerName;
             this.appointmentDate = appointmentDate;
             this.email = email;
+            this.phoneNumber = phoneNumber;
             this.treatmentNames = treatmentNames;
             this.cost = cost;
             this.duration = duration;

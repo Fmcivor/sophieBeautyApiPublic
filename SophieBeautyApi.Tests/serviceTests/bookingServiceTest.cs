@@ -32,6 +32,7 @@ public class BookingServiceTests
         customerName: "Sophie Test",
         appointmentDate: date ?? DateTime.UtcNow,
         email: "test@test.com",
+        phoneNumber: "07709797855",
         treatmentNames: new List<string> { "facial" },
         cost: 50,
         duration: 60,

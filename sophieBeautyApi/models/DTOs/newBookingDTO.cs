@@ -25,6 +25,9 @@ namespace sophieBeautyApi.Models
         [RegularExpression(@"^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$",ErrorMessage ="Email not of valid format.")]
         public string email { get; set; }
 
+        [RegularExpression(@"^[0-9]{7,11}$")]
+        public string? phoneNumber {get; set;}
+
         [Required]
         public bool payByCard { get; set; }
 

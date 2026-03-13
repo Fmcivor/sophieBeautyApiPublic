@@ -60,7 +60,7 @@ namespace sophieBeautyApi.services
                 paid = true;
             }
 
-            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed);
+            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email,newBooking.phoneNumber , treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed);
 
         
 
