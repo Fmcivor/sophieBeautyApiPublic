@@ -213,6 +213,52 @@ public async Task<IActionResult> Login(...)
 
 When the limit is exceeded the API automatically returns `HTTP 429 Too Many Requests` with a `Retry-After` header telling the client when they can try again.
 
+#### Sliding window vs fixed window — which one to pick?
+
+Both strategies count requests over a time period, but they differ in *how* they count:
+
+**Fixed window** divides time into hard buckets (e.g. 0:00–0:15, 0:15–0:30, …).  
+The counter resets to zero at the start of every new bucket, regardless of when requests arrived.
+
+```
+Limit: 10 requests per 15-minute window
+
+00:00  ──────────── bucket 1 ────────────  00:15
+       Request #10 at 00:14:59 ✅
+       Request #11 at 00:14:59 ❌ (429)
+       ↓ bucket resets at 00:15:00
+       Request #12 at 00:15:01 ✅  ← allowed immediately!
+```
+
+The problem: a client can make 10 requests at 00:14:55 and another 10 at 00:15:05 — that's 20 requests in 10 seconds, even though the "limit" is 10 per 15 minutes. This "boundary burst" makes the fixed window less effective against bursts.
+
+---
+
+**Sliding window** tracks requests against a rolling window anchored to *each request's arrival time*.  
+No hard bucket boundary exists, so the boundary burst is impossible.
+
+```
+Limit: 10 requests per 60-second sliding window
+
+At 00:14:55 client makes 10 requests → allowed ✅
+At 00:15:05 client makes 1 more request
+  → the window looks back 60 s to 00:14:05
+  → all 10 previous requests are still inside the window → ❌ (429)
+
+Only once requests from 00:14:05 age out of the window can new ones be accepted.
+```
+
+| | Fixed window | Sliding window |
+|---|---|---|
+| Counter resets | At the end of each fixed period | Continuously, as old requests age out |
+| Boundary burst risk | Yes — burst at the window seam | No |
+| Memory / CPU cost | Lower | Slightly higher (must track request timestamps) |
+| Best for | Login protection — large window, simple reset is fine | Booking creation — prevents sustained high rates at any moment |
+
+**Rule of thumb:**  
+- Use **fixed window** for coarse protection (login brute-force) where the occasional boundary burst is acceptable.  
+- Use **sliding window** for endpoints where bursts are the actual threat (booking spam).
+
 ### 2.6 Email / Notification Addresses Hardcoded
 
 **Where they are:** `emailService.cs` lines 51 and 54 (repeated in each of the four email methods).
@@ -315,7 +361,91 @@ Change it to `"Shaped by Sophie API"` and fill in the version, description, and 
 
 ### 4.8 Add FluentValidation (Optional Alternative)
 
-Consider replacing DataAnnotation validation with **FluentValidation** for richer, testable validation rules that live outside the model classes.
+#### What is FluentValidation?
+
+FluentValidation is a NuGet library that lets you write validation rules in dedicated **validator classes** using a readable, chainable C# API, instead of scattering `[Required]`, `[Range]`, and `[RegularExpression]` attributes across model classes.
+
+#### Why it is better than DataAnnotations for this API
+
+| | DataAnnotations | FluentValidation |
+|---|---|---|
+| Where rules live | Scattered as attributes on each model property | One dedicated class per model |
+| Can express complex rules | Limited (attribute per property) | Yes — cross-property rules, conditional rules, async database checks |
+| Testable in isolation | No — requires full model binding | Yes — `new BookingValidator().TestValidate(dto)` |
+| Custom error messages | Possible but verbose | First-class, per-rule |
+| Reuse the same rule in multiple validators | Copy–paste | `RuleFor(...).SetValidator(new DateNotInPastValidator())` |
+
+#### How to add it to this project
+
+**Step 1 — Install the package:**
+
+```bash
+dotnet add package FluentValidation.AspNetCore
+```
+
+**Step 2 — Write a validator class** (replaces the `[Required]`/`[Range]` attributes on `newBookingDTO`):
+
+```csharp
+// Validators/NewBookingValidator.cs
+using FluentValidation;
+using sophieBeautyApi.DTOs;
+
+public class NewBookingValidator : AbstractValidator<newBookingDTO>
+{
+    public NewBookingValidator()
+    {
+        RuleFor(x => x.customerName)
+            .NotEmpty().WithMessage("Customer name is required.")
+            .MaximumLength(100);
+
+        RuleFor(x => x.email)
+            .NotEmpty()
+            .EmailAddress().WithMessage("A valid email address is required.");
+
+        RuleFor(x => x.appointmentDate)
+            .NotEmpty()
+            .GreaterThan(DateTime.UtcNow).WithMessage("Appointment date must be in the future.");
+
+        RuleFor(x => x.cost)
+            .GreaterThan(0).WithMessage("Cost must be greater than zero.");
+
+        // Cross-property rule: duration must be positive
+        RuleFor(x => x.duration)
+            .GreaterThan(0).WithMessage("Duration must be at least 1 minute.");
+    }
+}
+```
+
+**Step 3 — Register FluentValidation in `Program.cs`:**
+
+```csharp
+using FluentValidation;
+using FluentValidation.AspNetCore;
+
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<NewBookingValidator>();
+```
+
+With `AddFluentValidationAutoValidation()` enabled, ASP.NET Core runs your validator automatically during model binding — the controller receives the same `ModelState.IsValid = false` result it would from DataAnnotations, so no controller code changes are needed.
+
+**Step 4 — Test the validator in isolation** (no HTTP stack required):
+
+```csharp
+// BookingValidatorTests.cs
+var validator = new NewBookingValidator();
+var result = validator.TestValidate(new newBookingDTO
+{
+    customerName = "",
+    email = "not-an-email",
+    appointmentDate = DateTime.UtcNow.AddDays(-1)  // past date
+});
+
+result.ShouldHaveValidationErrorFor(x => x.customerName);
+result.ShouldHaveValidationErrorFor(x => x.email);
+result.ShouldHaveValidationErrorFor(x => x.appointmentDate);
+```
+
+This is particularly valuable here because the current codebase has 0% test coverage — validators are small, self-contained classes that are easy to test first.
 
 ### 4.9 Cascading Deletes / Referential Integrity
 
