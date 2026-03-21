@@ -67,13 +67,70 @@ Add `[Authorize]` to both actions (or to the controller class) the same way the 
 
 ### 2.2 Hardcoded Issuer / Audience URL
 
-`jwtTokenHandler.cs` hardcodes the production Azure URL as the JWT issuer and audience.  
-Move this value to configuration (`appsettings.json` / Azure Key Vault key `jwtIssuer`) so it resolves correctly in development and staging environments.
+**Where it is:** `jwtTokenHandler.cs` line 40–41 and `Program.cs` lines 52–53.
+
+```csharp
+// jwtTokenHandler.cs – line 40-41
+Issuer   = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
+Audience = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
+
+// Program.cs – lines 52-53 (token validation)
+ValidAudience = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
+ValidIssuer   = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
+```
+
+**Why it is a problem:**
+- Tokens minted during local development will be rejected in production (and vice-versa) because the issuer/audience do not match the environment.
+- Every time the Azure App Service URL changes (e.g. after a redeploy or rename), the code has to be changed and redeployed rather than just updating a config entry.
+- Exposing the exact production URL in source code reveals deployment details to anyone who reads the repo.
+
+**How to fix it:** Store the URL in Azure Key Vault (key name e.g. `jwtIssuer`) or in `appsettings.json` and read it via `IConfiguration`:
+
+```csharp
+Issuer   = config["jwtIssuer"],
+Audience = config["jwtIssuer"],
+```
 
 ### 2.3 Hardcoded CORS Origins
 
-The CORS policy in `Program.cs` lists specific localhost IPs and ports.  
-Read allowed origins from configuration so the list can be updated without redeployment and so dev/staging/prod can differ.
+**Where it is:** `Program.cs` lines 92–96.
+
+```csharp
+policy.WithOrigins(
+    "http://localhost:000",          // broken – port 000 does not exist
+    "http://127.0.0.1:5500",
+    "http://192.168.1.71:5500",      // developer's local machine IP
+    "https://shapedbysophiee.netlify.app",
+    "https://www.shapedbysophiee.com"
+)
+```
+
+**Why it is a problem:**
+- `http://localhost:000` is a typo that never actually allows any localhost origin.
+- `http://192.168.1.71:5500` is a private LAN IP belonging to a specific developer's machine — it will not work on any other machine and has no meaning in production.
+- Both HTTP localhost entries allow insecure (non-HTTPS) cross-origin requests, which can expose the `Authorization` header to network eavesdroppers.
+- If the front-end domain changes (Netlify → custom domain) or a new staging environment is added, the API code must be changed and redeployed.
+
+**How to fix it:** Read the list from configuration:
+
+```json
+// appsettings.json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://shapedbysophiee.netlify.app",
+      "https://www.shapedbysophiee.com"
+    ]
+  }
+}
+```
+
+```csharp
+// Program.cs
+policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>())
+```
+
+Each environment (`Development`, `Production`) can then have its own `appsettings.{Environment}.json` with the appropriate origins.
 
 ### 2.4 No Refresh Token Mechanism
 
@@ -82,13 +139,112 @@ Implement a `/admin/refresh` endpoint that issues a new short-lived access token
 
 ### 2.5 No Rate Limiting
 
-The booking creation endpoint (`POST /booking/Create`) has no throttling.  
-Add ASP.NET Core 7+ `RateLimiter` middleware (or the `AspNetCoreRateLimit` package) to limit requests per IP and prevent spam bookings or brute-force attempts on the login endpoint.
+#### What is rate limiting and why does this API need it?
+
+Rate limiting is a technique that caps how many HTTP requests a single client (identified by their IP address or API key) can make to an endpoint within a given time window. Without it, any person or automated script can hammer an endpoint endlessly.
+
+For this API there are two specific risks:
+
+| Endpoint | Risk without rate limiting |
+|---|---|
+| `POST /booking/Create` | A script could spam hundreds of fake bookings per second, flooding the booking list and sending real customers spurious confirmation emails |
+| `POST /admin/login` | An attacker can try thousands of username/password combinations (brute-force) until they find the admin credentials |
+
+#### How to add rate limiting in .NET 8
+
+.NET 7+ ships a built-in `System.Threading.RateLimiting` package and first-class ASP.NET Core middleware — no extra NuGet package is required.
+
+**Step 1 — Register policies in `Program.cs`:**
+
+```csharp
+using System.Threading.RateLimiting;
+
+builder.Services.AddRateLimiter(options =>
+{
+    // Sliding window: max 5 booking requests per IP per 60 seconds
+    options.AddPolicy("bookingPolicy", context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit          = 5,
+                Window               = TimeSpan.FromSeconds(60),
+                SegmentsPerWindow    = 6,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit           = 0
+            }));
+
+    // Fixed window: max 10 login attempts per IP per 15 minutes
+    options.AddPolicy("loginPolicy", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit          = 10,
+                Window               = TimeSpan.FromMinutes(15),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit           = 0
+            }));
+
+    // Return HTTP 429 Too Many Requests when limit is exceeded
+    options.RejectionStatusCode = 429;
+});
+```
+
+**Step 2 — Add the middleware to the pipeline (in `Program.cs`, after `UseCors`):**
+
+```csharp
+app.UseRateLimiter();
+```
+
+**Step 3 — Decorate the relevant controller actions:**
+
+```csharp
+// bookingController.cs
+[HttpPost("Create")]
+[EnableRateLimiting("bookingPolicy")]
+public async Task<IActionResult> CreateBooking(...)
+
+// adminController.cs
+[HttpPost("login")]
+[EnableRateLimiting("loginPolicy")]
+public async Task<IActionResult> Login(...)
+```
+
+When the limit is exceeded the API automatically returns `HTTP 429 Too Many Requests` with a `Retry-After` header telling the client when they can try again.
 
 ### 2.6 Email / Notification Addresses Hardcoded
 
-`emailService.cs` hardcodes `DoNotReply@shapedbysophiee.com` and `info@beautybysophieee.com`.  
-Move these to Azure Key Vault or `appsettings.json` so they can be changed without a redeploy.
+**Where they are:** `emailService.cs` lines 51 and 54 (repeated in each of the four email methods).
+
+```csharp
+htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");  // line 51
+
+var emailMessage = new EmailMessage(
+    senderAddress: "DoNotReply@shapedbysophiee.com",  // line 54
+    ...
+```
+
+**Why it is a problem:**
+- The "From" address (`DoNotReply@shapedbysophiee.com`) is baked into four separate places in the file.  
+  If the domain name changes, all four methods must be edited.
+- The support contact address (`info@beautybysophieee.com`) is embedded inside the HTML email body.  
+  Changing it requires a code change and redeployment rather than a config update.
+- Anyone reading the public repository knows the exact email addresses used by the business.
+
+**How to fix it:** Add two keys to Azure Key Vault (or `appsettings.json`) and read them once in the constructor:
+
+```csharp
+private readonly string _senderAddress;
+private readonly string _contactEmail;
+
+public emailService(IConfiguration config)
+{
+    _config        = config;
+    _senderAddress = config["EmailSenderAddress"];   // e.g. DoNotReply@shapedbysophiee.com
+    _contactEmail  = config["EmailContactAddress"];  // e.g. info@beautybysophiee.com
+}
+```
 
 ---
 
