@@ -57,6 +57,7 @@ public class BookingServiceTests
         customerName = "Sophie Test",
         appointmentDate = DateTime.UtcNow,
         email = "test@test.com",
+        phoneNumber = "07709797855",
         treatmentIds = new List<string> { "t1" },
         payByCard = false
     };

@@ -28,6 +28,7 @@ public class AvailabilitySlotServiceTests
         customerName: "Sophie Test",
         appointmentDate: apptDate,
         email: "test@test.com",
+        phoneNumber:"07709797855",
         treatmentNames: new List<string> { "facial" },
         cost: 50,
         duration: duration,
