@@ -48,6 +48,9 @@ namespace sophieBeautyApi.Models
         [Required]
         public bool reminderSent { get; set; }
 
+        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
+        public string? phoneNumber { get; set; }
+
 
         public enum status
         {
@@ -65,7 +68,8 @@ namespace sophieBeautyApi.Models
             int duration,
             bool payByCard,
             bool paid,
-            status bookingStatus)
+            status bookingStatus,
+            string? phoneNumber)
         {
             Id = null;
             this.customerName = customerName;
@@ -78,6 +82,7 @@ namespace sophieBeautyApi.Models
             this.paid = paid;
             this.bookingStatus = bookingStatus;
             this.reminderSent = false;
+            this.phoneNumber = phoneNumber;
         }
 
     }
