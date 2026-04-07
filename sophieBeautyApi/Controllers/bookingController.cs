@@ -102,11 +102,11 @@ namespace sophieBeautyApi.Controllers
                 return StatusCode(500, "An error occurred while creating the booking.");
             }
 
+            await _emailService.Send(booking);
+
             var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
             booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, ukZone);
-
-            await _emailService.Send(booking);
 
             return CreatedAtAction(nameof(create), booking);
         }
