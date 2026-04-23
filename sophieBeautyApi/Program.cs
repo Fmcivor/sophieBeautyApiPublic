@@ -22,9 +22,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Azure Key Vault
 builder.Configuration.AddAzureKeyVault(
     new Uri("https://sophiebeautykeys.vault.azure.net/"),
-    new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned)
-    // new InteractiveBrowserCredential()
-    //testing
+    new ManagedIdentityCredential()
 );
 
 // Add services
