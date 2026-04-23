@@ -63,8 +63,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
             ValidIssuer = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["jwtSecret"]))
+            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) =>
+            {
+                var secret = builder.Configuration["jwtSecret"]
+                    ?? throw new InvalidOperationException("JWT secret is not configured.");
+                return new[] { new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)) };
+            }
         };
     });
 
