@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
 using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
@@ -16,11 +17,11 @@ namespace sophieBeautyApi.services
 
         private readonly IAdminRepository _adminRepository;
 
-        private readonly bookingService _bookingService;
-        private readonly emailService _emailService;
+        private readonly IBookingService _bookingService;
+        private readonly IEmailService _emailService;
         private readonly jwtTokenHandler _jwtTokenHandler;
 
-        public adminService(IAdminRepository adminRepository, emailService emailService, bookingService bookingService, jwtTokenHandler jwtTokenHandler)
+        public adminService(IAdminRepository adminRepository, IEmailService emailService, IBookingService bookingService, jwtTokenHandler jwtTokenHandler)
         {
             this._adminRepository = adminRepository;
             this._bookingService = bookingService;
