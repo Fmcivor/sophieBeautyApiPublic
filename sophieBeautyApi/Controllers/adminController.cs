@@ -48,13 +48,14 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            string? jwtToken = await _adminService.login(loginDto);
+            admin validAdmin = await _adminService.validateLogin(loginDto);
 
-            if (jwtToken == null)
+            if (validAdmin == null)
             {
-                return Unauthorized("Invalid username or password");
+                return BadRequest("Invalid username or password");
             }
 
+            var token = _tokenHandler.generateToken(validAdmin);
 
             // var cookieOptions = new CookieOptions
             // {
@@ -66,7 +67,7 @@ namespace sophieBeautyApi.Controllers
 
             // HttpContext.Response.Cookies.Append("jwt", token, cookieOptions);
 
-            return Ok(new {jwt= jwtToken});
+            return Ok(new {jwt=token});
 
 
         }
