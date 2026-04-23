@@ -60,7 +60,7 @@ namespace sophieBeautyApi.services
                 paid = true;
             }
 
-            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email,newBooking.phoneNumber , treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed);
+            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed,newBooking.phoneNumber);
 
         
 
@@ -71,23 +71,28 @@ namespace sophieBeautyApi.services
                 return new BookingResult("TAKEN");
             }
 
-            var created = await _bookingRepository.CreateAsync(booking);
+            try
+            {
+                var created = await _bookingRepository.CreateAsync(booking);
 
-            // Null check
-            if (created == null)
+                // Null check
+                if (created == null)
+                {
+                    return new BookingResult("SERVER_ERROR");
+                }
+
+                var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+                created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
+
+                await _emailService.Send(created);
+
+                return new BookingResult(created);
+            }
+            catch (Exception)
             {
                 return new BookingResult("SERVER_ERROR");
             }
-
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
-
-            await _emailService.Send(created);
-
-            
-
-            return new BookingResult(created);
         }
 
 

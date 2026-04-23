@@ -132,22 +132,22 @@ public class BookingServiceTests
     }
 
     [Fact]
-    public async Task create_RepositoryReturnsNull_ReturnsServerError()
-    {
-        _treatmentServiceMock.Setup(s => s.getListByIds(It.IsAny<List<string>>()))
-            .ReturnsAsync(new List<treatment> { MakeTreatment() });
+    public async Task create_RepositoryThrowsException_ReturnsServerError()
+{
+    _treatmentServiceMock.Setup(s => s.getListByIds(It.IsAny<List<string>>()))
+        .ReturnsAsync(new List<treatment> { MakeTreatment() });
 
-        _availabilityServiceMock.Setup(s => s.bookingWithinAvailabilitySlot(It.IsAny<DateTime>(), It.IsAny<int>()))
-            .ReturnsAsync(true);
+    _availabilityServiceMock.Setup(s => s.bookingWithinAvailabilitySlot(It.IsAny<DateTime>(), It.IsAny<int>()))
+        .ReturnsAsync(true);
 
-        _bookingRepoMock.Setup(r => r.CreateAsync(It.IsAny<booking>()))
-            .ReturnsAsync((booking?)null);
+    _bookingRepoMock.Setup(r => r.CreateAsync(It.IsAny<booking>()))
+        .ThrowsAsync(new Exception("DB failure"));
 
-        var result = await _sut.create(MakeBookingDTO());
+    var result = await _sut.create(MakeBookingDTO());
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal("SERVER_ERROR", result.Error);
-    }
+    Assert.False(result.IsSuccess);
+    Assert.Equal("SERVER_ERROR", result.Error);
+}
 
     [Fact]
     public async Task create_ValidBooking_SendsEmail()
@@ -397,5 +397,83 @@ public class BookingServiceTests
         var result = await _sut.getMonthlyRevenue(new DateTime(2026, 3, 12));
 
         Assert.Equal(0, result);
+    }
+
+    // ── markReminderSent ──────────────────────────────────────────────────────
+    [Fact]
+    public async Task markReminderSent_ValidBooking_ReturnsTrue()
+    {
+        var booking = MakeBooking();
+        _bookingRepoMock.Setup(r => r.MarkReminderSentAsync(booking))
+            .ReturnsAsync(true);
+
+        var result = await _sut.markReminderSent(booking);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task markReminderSent_RepositoryFails_ReturnsFalse()
+    {
+        var booking = MakeBooking();
+        _bookingRepoMock.Setup(r => r.MarkReminderSentAsync(booking))
+            .ReturnsAsync(false);
+
+        var result = await _sut.markReminderSent(booking);
+
+        Assert.False(result);
+    }
+
+    // ── getUpcomingBookings ───────────────────────────────────────────────────
+    [Fact]
+    public async Task getUpcomingBookings_ReturnsBookingsWithUkTime()
+    {
+        var utcDate = new DateTime(2026, 3, 12, 10, 0, 0, DateTimeKind.Utc);
+
+        _bookingRepoMock.Setup(r => r.GetUpcomingBookingsAsync(It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<booking> { MakeBooking(date: utcDate) });
+
+        var result = await _sut.getUpcomingBookings(new DateTime(2026, 3, 12));
+
+        // Compute the expected UK time
+        var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+        var expected = TimeZoneInfo.ConvertTimeFromUtc(utcDate, ukZone);
+
+        Assert.Single(result);
+        Assert.Equal(expected, result.First().appointmentDate);
+    }
+
+    [Fact]
+    public async Task getUpcomingBookings_NoBookings_ReturnsEmpty()
+    {
+        _bookingRepoMock.Setup(r => r.GetUpcomingBookingsAsync(It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<booking>());
+
+        var result = await _sut.getUpcomingBookings(new DateTime(2026, 3, 12));
+
+        Assert.Empty(result);
+    }
+
+    // ── getNextDayBookings ────────────────────────────────────────────────────
+    [Fact]
+    public async Task getNextDayBookings_ReturnsBookings()
+    {
+        _bookingRepoMock.Setup(r => r.GetNextDayBookingsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<booking> { MakeBooking() });
+
+        var result = await _sut.getNextDayBookings(new DateTime(2026, 3, 12));
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public async Task getNextDayBookings_NoBookings_ReturnsEmpty()
+    {
+        _bookingRepoMock.Setup(r => r.GetNextDayBookingsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<booking>());
+
+        var result = await _sut.getNextDayBookings(new DateTime(2026, 3, 12));
+
+        Assert.Empty(result);
     }
 }

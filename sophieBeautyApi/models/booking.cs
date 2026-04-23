@@ -22,8 +22,8 @@ namespace sophieBeautyApi.Models
         public string email { get; set; }
 
 
-        [RegularExpression(@"^[0-9]{7,11}$")]
-        public string? phoneNumber {get; set;}
+        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
+        public string? phoneNumber { get; set; }
 
         [Required]
         public DateTime appointmentDate { get; set; }
@@ -52,8 +52,7 @@ namespace sophieBeautyApi.Models
         [Required]
         public bool reminderSent { get; set; }
 
-        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
-        public string? phoneNumber { get; set; }
+        
 
 
         public enum status
@@ -67,7 +66,6 @@ namespace sophieBeautyApi.Models
             string customerName,
             DateTime appointmentDate,
             string email,
-            string phoneNumber,
             List<string> treatmentNames,
             int cost,
             int duration,
@@ -80,7 +78,6 @@ namespace sophieBeautyApi.Models
             this.customerName = customerName;
             this.appointmentDate = appointmentDate;
             this.email = email;
-            this.phoneNumber = phoneNumber;
             this.treatmentNames = treatmentNames;
             this.cost = cost;
             this.duration = duration;

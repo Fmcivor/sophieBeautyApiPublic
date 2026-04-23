@@ -302,4 +302,38 @@ public class AvailabilitySlotServiceTests
 
         Assert.False(result);
     }
+
+    // ── deleteAll ─────────────────────────────────────────────────────────────
+    [Fact]
+    public async Task deleteAll_Success_ReturnsTrue()
+    {
+        _slotRepoMock.Setup(r => r.DeleteAllAsync())
+            .ReturnsAsync(true);
+
+        var result = await _sut.deleteAll();
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task deleteAll_Failure_ReturnsFalse()
+    {
+        _slotRepoMock.Setup(r => r.DeleteAllAsync())
+            .ReturnsAsync(false);
+
+        var result = await _sut.deleteAll();
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task deleteAll_CallsRepositoryOnce()
+    {
+        _slotRepoMock.Setup(r => r.DeleteAllAsync())
+            .ReturnsAsync(true);
+
+        await _sut.deleteAll();
+
+        _slotRepoMock.Verify(r => r.DeleteAllAsync(), Times.Once);
+    }
 }
