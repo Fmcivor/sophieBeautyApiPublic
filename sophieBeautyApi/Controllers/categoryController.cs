@@ -41,22 +41,15 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var all = await _categoryService.getAll();
-            var exists = all.Any(cat => cat.name.ToLower() == c.name.ToLower());
-
-            if (exists)
+            var category = await _categoryService.create(c.name);
+            if (category == null)
             {
                 return Conflict("Category already exists");
             }
 
-            var category = await _categoryService.create(c.name);
+            
 
-            if (category == null)
-            {
-                return BadRequest("An error has occurred while creating the new category");
-            }
-
-            Response.Headers.Add("Category-created-successfully", category.Id);
+            Response.Headers.Append("Category-created-successfully", category.Id);
             return StatusCode(201, category);
 
         }

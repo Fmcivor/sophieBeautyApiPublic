@@ -21,6 +21,10 @@ namespace sophieBeautyApi.Models
         [RegularExpression(@"^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$",ErrorMessage ="Email not of valid format.")]
         public string email { get; set; }
 
+
+        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
+        public string? phoneNumber { get; set; }
+
         [Required]
         public DateTime appointmentDate { get; set; }
 
@@ -48,8 +52,7 @@ namespace sophieBeautyApi.Models
         [Required]
         public bool reminderSent { get; set; }
 
-        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
-        public string? phoneNumber { get; set; }
+        
 
 
         public enum status

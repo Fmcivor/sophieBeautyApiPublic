@@ -14,18 +14,15 @@ namespace sophieBeautyApi.Controllers
     public class bookingController : ControllerBase
     {
         private readonly bookingService _bookingService;
-        private readonly treatmentService _treatmentService;
+        
+        
 
-        private readonly emailService _emailService;
+        
 
-        private readonly availablilitySlotService _availablilitySlotService;
-
-        public bookingController(bookingService bookingService, treatmentService treatmentService, availablilitySlotService availablilitySlotService, emailService emailService)
+        public bookingController(bookingService bookingService)
         {
             this._bookingService = bookingService;
-            this._treatmentService = treatmentService;
-            this._availablilitySlotService = availablilitySlotService;
-            this._emailService = emailService;
+            
         }
 
 
@@ -34,17 +31,6 @@ namespace sophieBeautyApi.Controllers
         public async Task<ActionResult> getAll()
         {
             var bookings = await _bookingService.getAll();
-
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-
-
-            foreach (var b in bookings)
-            {
-                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
-            }
-
-
 
             return Ok(bookings);
         }
@@ -57,58 +43,31 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var treatments = await _treatmentService.getListByIds(newBooking.treatmentIds);
 
-            List<string> treatmentNames = new List<string>();
-            int duration = 0;
-            int price = 0;
+            var result = await _bookingService.create(newBooking);
 
-            foreach (var t in treatments)
+            if (result.IsSuccess == false)
             {
-                treatmentNames.Add(t.name);
-                duration += t.duration;
-                price += t.price;
+                switch (result.Error)
+                {
+                    case "TAKEN":
+                        return BadRequest("TAKEN, Sorry the booking slo has already been taken");
+                    case "NO_SLOT":
+                        return BadRequest("There is no availability slot for the time chosen");
+                    case "SERVER_ERROR":
+                        return StatusCode(500, "An error occurred while creating the booking");
+                    default:
+                        return StatusCode(500, "An unexpected error occurred");
+                }
             }
 
-            duration = (int)(Math.Ceiling(duration / 30.0) * 30);
-
-            bool paid = false;
-            if (newBooking.payByCard)
+            if (result.Booking == null)
             {
-                paid = true;
+                return StatusCode(500, "An error occurred when creating the booking"); 
             }
 
-            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed, newBooking.phoneNumber);
+            return CreatedAtAction(nameof(create), result.Booking.Id);
 
-            var existingBooking = await _bookingService.bookingOnDate(booking.appointmentDate);
-
-            if (existingBooking != null)
-            {
-                return BadRequest("TAKEN,Sorry the booking slot has already been taken");
-            }
-
-            bool withinAvailableTimeSlot = await _availablilitySlotService.bookingWithinAvailabilitySlot(booking.appointmentDate);
-
-            if (!withinAvailableTimeSlot)
-            {
-                return BadRequest("There is no availability slot for the time chosen");
-            }
-
-            booking = await _bookingService.create(booking);
-
-            // Null check
-            if (booking == null)
-            {
-                return StatusCode(500, "An error occurred while creating the booking.");
-            }
-
-            await _emailService.Send(booking);
-
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, ukZone);
-
-            return CreatedAtAction(nameof(create), booking);
         }
 
 
@@ -159,11 +118,6 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (updatedbooking.Id == null)
-            {
-                return NotFound();
-            }
-
             bool succeeded = await _bookingService.update(updatedbooking);
 
             if (!succeeded)
@@ -183,15 +137,19 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest("Id is required.");
             }
 
-            var cancelledBooking = await _bookingService.getById(id);
-            bool succeeded = await _bookingService.delete(id);
+            var result = await _bookingService.delete(id);
 
-            if (!succeeded)
+            if (result.IsSuccess == false)
             {
-                return NotFound();
+                switch (result.Error)
+                {
+                    case "NOT_FOUND":
+                        return  NotFound("Booking not found");
+                    default:
+                        return StatusCode(500,"An unexpected error occurred");
+                }
             }
-
-            await _emailService.sendCancellation(cancelledBooking);
+            
             return NoContent();
         }
 
@@ -214,18 +172,12 @@ namespace sophieBeautyApi.Controllers
         {
             var bookingsToday = await _bookingService.getTodaysBooking(today);
 
-            if (bookingsToday == null)
+            if (bookingsToday.Any() == false)
             {
                 return NotFound();
             }
 
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            foreach (booking b in bookingsToday)
-            {
-                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
-            }
-
+    
             return Ok(bookingsToday);
         }
 
@@ -236,16 +188,9 @@ namespace sophieBeautyApi.Controllers
         {
             var upcomingBookings = await _bookingService.getUpcomingBookings(today);
 
-            if (upcomingBookings == null)
+            if (upcomingBookings.Any() == false)
             {
                 return NotFound();
-            }
-
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            foreach (booking b in upcomingBookings)
-            {
-                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
             }
 
             return Ok(upcomingBookings);

@@ -7,25 +7,25 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.RepositoryInterfaces;
 
 namespace sophieBeautyApi.services
 {
     public class adminService
     {
 
-        private readonly IMongoCollection<admin> _adminTable;
-        private readonly MongoClient _mongoClient;
+        private readonly IAdminRepository _adminRepository;
 
         private readonly bookingService _bookingService;
         private readonly emailService _emailService;
+        private readonly jwtTokenHandler _jwtTokenHandler;
 
-        public adminService(MongoClient mongoClient, emailService emailService, bookingService bookingService)
+        public adminService(IAdminRepository adminRepository, emailService emailService, bookingService bookingService, jwtTokenHandler jwtTokenHandler)
         {
-            _mongoClient = mongoClient;
-            var database = _mongoClient.GetDatabase("SophieBeauty");
-            _bookingService = bookingService;
-            _emailService = emailService;
-            _adminTable = database.GetCollection<admin>("admins");
+            this._adminRepository = adminRepository;
+            this._bookingService = bookingService;
+            this._emailService = emailService;
+            this._jwtTokenHandler = jwtTokenHandler;
         }
 
         public async Task<admin> register(adminDTO admin)
@@ -39,14 +39,14 @@ namespace sophieBeautyApi.services
             newAdmin.password = hashed;
             newAdmin.salt = salt;
 
-            await _adminTable.InsertOneAsync(newAdmin);
+            await _adminRepository.RegisterAsync(newAdmin);
 
             return newAdmin;
         }
 
-        public async Task<admin> validateLogin(adminDTO loginDto)
+        public async Task<string?> login(adminDTO loginDto)
         {
-            var account = await _adminTable.Find(a => a.username == loginDto.username).FirstOrDefaultAsync();
+            var account = await _adminRepository.findAdminByUsername(loginDto.username);
 
             if (account == null)
             {
@@ -55,12 +55,14 @@ namespace sophieBeautyApi.services
 
             string hashed = hashPassword(loginDto.password, account.salt);
 
-            if (hashed != account.password)
+            if (!CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(hashed), Convert.FromBase64String(account.password)))
             {
                 return null;
             }
 
-            return account;
+            var token = _jwtTokenHandler.generateToken(account);
+
+            return token;
         }
 
 
@@ -71,7 +73,7 @@ namespace sophieBeautyApi.services
                 password: password,
                 salt: salt,
                 prf: KeyDerivationPrf.HMACSHA256,
-                iterationCount: 100000,
+                iterationCount: 600000,
                 numBytesRequested: 256 / 8
             ));
 

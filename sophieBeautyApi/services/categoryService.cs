@@ -7,43 +7,51 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
-    public class categoryService
+    public class categoryService: ICategoryService
     {
-        private MongoClient _mongoClient;
-        private IMongoCollection<category> categoryTable;
+        private readonly ICategoryRepository _categoryRepository;
 
-        public categoryService(MongoClient mongoClient)
+        public categoryService(ICategoryRepository categoryRepository)
         {
-            _mongoClient = mongoClient;
-            var database = _mongoClient.GetDatabase("SophieBeauty");
-            categoryTable = database.GetCollection<category>("categories");
+            this._categoryRepository = categoryRepository;
         }
 
 
         public async Task<List<category>> getAll()
         {
-            var categories = await categoryTable.Find(c => true).ToListAsync();
+            var categories = await _categoryRepository.GetAllAsync();
 
             return categories;
         }
 
-        public async Task<category> create(string name)
+        public async Task<category?> create(string name)
         {
+
+            var all = await getAll();
+            if (all.Any(cat => cat.name.ToLower() == name.ToLower()))
+            {
+                return null;
+            }
+
             category categoryToAdd = new category(name);
 
-            await categoryTable.InsertOneAsync(categoryToAdd);
 
-            return categoryToAdd;
+
+            return await _categoryRepository.CreateAsync(categoryToAdd);
+
+            
         }
 
         public async Task<bool> delete(category category)
         {
-            var result = await categoryTable.DeleteOneAsync(c=> c.Id == category.Id);
+            var result = await _categoryRepository.DeleteAsync(category);
 
-            return result.DeletedCount == 1;
+            return result;
         }
     }
 

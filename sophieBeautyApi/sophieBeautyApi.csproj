@@ -8,30 +8,38 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
+    <!-- <PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.*" />
     <PackageReference Include="MongoDB.Driver" Version="3.4.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
     <PackageReference Include="Azure.Identity" Version="1.*" />
-    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.*" />
-  </ItemGroup>
-  
-<ItemGroup>
-  <None Update="BookingConfirmation.html">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </None>
-  <None Update="bookingCancelled.html">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </None>
-  <None Update="bookingNotification.html">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </None>
+    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.*" /> -->
 
-  <None Update="bookingReminder.html">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
+    <PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.26" />
+    <PackageReference Include="MongoDB.Driver" Version="3.8.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
+    <PackageReference Include="Azure.Identity" Version="1.18.0" />
+    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="BookingConfirmation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="bookingCancelled.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="bookingNotification.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+
+    <None Update="bookingReminder.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 
 </Project>
