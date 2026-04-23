@@ -67,8 +67,8 @@ namespace sophieBeautyApi.Controllers
                 return StatusCode(500, "An error occurred when creating the booking"); 
             }
 
-            return CreatedAtAction(nameof(create), result.Booking.Id);
-
+            // return CreatedAtAction(nameof(create), result.Booking.Id);
+            return CreatedAtAction(nameof(create),result.Booking);
         }
 
 
