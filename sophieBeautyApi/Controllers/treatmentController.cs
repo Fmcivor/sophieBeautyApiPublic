@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.ServiceInterfaces;
 using sophieBeautyApi.services;
 
 namespace sophieBeautyApi.Controllers
@@ -11,9 +12,9 @@ namespace sophieBeautyApi.Controllers
     [Route("[controller]")]
     public class treatmentController : ControllerBase
     {
-        private readonly treatmentService _treatmentService;
+        private readonly ITreatmentService _treatmentService;
 
-        public treatmentController(treatmentService treatmentService)
+        public treatmentController(ITreatmentService treatmentService)
         {
             this._treatmentService = treatmentService;
         }

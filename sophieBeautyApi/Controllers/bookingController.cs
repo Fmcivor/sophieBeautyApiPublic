@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using MongoDB.Driver.Search;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.ServiceInterfaces;
 using sophieBeautyApi.services;
 
 namespace sophieBeautyApi.Controllers
@@ -13,13 +14,13 @@ namespace sophieBeautyApi.Controllers
     [Route("[controller]")]
     public class bookingController : ControllerBase
     {
-        private readonly bookingService _bookingService;
+        private readonly IBookingService _bookingService;
         
         
 
         
 
-        public bookingController(bookingService bookingService)
+        public bookingController(IBookingService bookingService)
         {
             this._bookingService = bookingService;
             

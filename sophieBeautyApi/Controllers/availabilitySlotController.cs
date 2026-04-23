@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.ServiceInterfaces;
 using sophieBeautyApi.services;
 
 namespace sophieBeautyApi.Controllers
@@ -12,9 +13,9 @@ namespace sophieBeautyApi.Controllers
     [Route("[controller]")]
     public class availablilitySlotController : ControllerBase
     {
-        private readonly availablilitySlotService _availabilitySlotService;
+        private readonly IAvailabilitySlotService _availabilitySlotService;
 
-        public availablilitySlotController(availablilitySlotService availablilitySlotService)
+        public availablilitySlotController(IAvailabilitySlotService availablilitySlotService)
         {
             _availabilitySlotService = availablilitySlotService;
         }

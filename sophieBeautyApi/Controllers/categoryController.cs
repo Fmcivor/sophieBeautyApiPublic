@@ -5,7 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
-using sophieBeautyApi.services;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.Controllers
 {
@@ -14,9 +14,9 @@ namespace sophieBeautyApi.Controllers
     [Route("[controller]")]
     public class categoryController : ControllerBase
     {
-        private categoryService _categoryService;
+        private ICategoryService _categoryService;
 
-        public categoryController(categoryService categoryService)
+        public categoryController(ICategoryService categoryService)
         {
             _categoryService = categoryService;
         }
