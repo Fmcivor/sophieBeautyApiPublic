@@ -50,7 +50,7 @@ builder.Services.AddScoped<IAvailabilitySlotService, availablilitySlotService>()
 builder.Services.AddScoped<jwtTokenHandler>();
 builder.Services.AddScoped<adminService>();
 builder.Services.AddScoped<ICategoryService,categoryService>();
-builder.Services.AddScoped<emailService>();
+builder.Services.AddScoped<IEmailService, emailService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
