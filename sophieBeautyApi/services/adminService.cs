@@ -19,14 +19,12 @@ namespace sophieBeautyApi.services
 
         private readonly IBookingService _bookingService;
         private readonly IEmailService _emailService;
-        private readonly jwtTokenHandler _jwtTokenHandler;
 
-        public adminService(IAdminRepository adminRepository, IEmailService emailService, IBookingService bookingService, jwtTokenHandler jwtTokenHandler)
+        public adminService(IAdminRepository adminRepository, IEmailService emailService, IBookingService bookingService)
         {
             this._adminRepository = adminRepository;
             this._bookingService = bookingService;
             this._emailService = emailService;
-            this._jwtTokenHandler = jwtTokenHandler;
         }
 
         public async Task<admin> register(adminDTO admin)
@@ -45,7 +43,7 @@ namespace sophieBeautyApi.services
             return newAdmin;
         }
 
-        public async Task<string?> login(adminDTO loginDto)
+        public async Task<admin?> validateLogin(adminDTO loginDto)
         {
             var account = await _adminRepository.findAdminByUsername(loginDto.username);
 
@@ -56,14 +54,12 @@ namespace sophieBeautyApi.services
 
             string hashed = hashPassword(loginDto.password, account.salt);
 
-            if (!CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(hashed), Convert.FromBase64String(account.password)))
+            if (hashed != account.password)
             {
                 return null;
             }
 
-            var token = _jwtTokenHandler.generateToken(account);
-
-            return token;
+            return account;
         }
 
 
@@ -74,7 +70,7 @@ namespace sophieBeautyApi.services
                 password: password,
                 salt: salt,
                 prf: KeyDerivationPrf.HMACSHA256,
-                iterationCount: 600000,
+                iterationCount: 100000,
                 numBytesRequested: 256 / 8
             ));
 
