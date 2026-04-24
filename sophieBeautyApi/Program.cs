@@ -16,14 +16,19 @@ using Microsoft.Extensions.Configuration;
 using sophieBeautyApi.RepositoryInterfaces;
 using sophieBeautyApi.Repositorys;
 using sophieBeautyApi.ServiceInterfaces;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Azure Key Vault
 builder.Configuration.AddAzureKeyVault(
     new Uri("https://sophiebeautykeys.vault.azure.net/"),
-    new ManagedIdentityCredential()
+    //new ManagedIdentityCredential()
+    new InteractiveBrowserCredential()
 );
+
+StripeConfiguration.ApiKey = builder.Configuration["StripeSecretKey"]
+    ?? throw new InvalidOperationException("Stripe secret key is not configured.");
 
 // Add services
 builder.Services.AddControllers();
@@ -51,6 +56,9 @@ builder.Services.AddScoped<jwtTokenHandler>();
 builder.Services.AddScoped<adminService>();
 builder.Services.AddScoped<ICategoryService,categoryService>();
 builder.Services.AddScoped<IEmailService, emailService>();
+
+
+
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

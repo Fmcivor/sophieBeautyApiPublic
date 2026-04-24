@@ -51,12 +51,20 @@ namespace sophieBeautyApi.Models
 
         [Required]
         public bool reminderSent { get; set; }
-
         
+        [Required]
+        public int remainingPayment { get; set; }
 
+        //Stripe fields
+        [Required]
+        public DateTime expiryDate { get; set; } = DateTime.UtcNow.AddMinutes(5);
+
+        public String? stripePaymentId { get; set; }
 
         public enum status
         {
+            DepositPending,
+            Expired,
             Confirmed,
             Completed
         }
