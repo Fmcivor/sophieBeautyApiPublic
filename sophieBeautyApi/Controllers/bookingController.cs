@@ -67,6 +67,11 @@ namespace sophieBeautyApi.Controllers
                 return StatusCode(500, "An error occurred when creating the booking"); 
             }
 
+
+            //remove 25 seconds from expiray time
+
+            result.Booking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
+
             // return CreatedAtAction(nameof(create), result.Booking.Id);
             return CreatedAtAction(nameof(create),result.Booking);
         }
@@ -218,5 +223,42 @@ namespace sophieBeautyApi.Controllers
 
 
 
+        [HttpPost("expired")]
+        public async Task<ActionResult<bool>> isExpired([FromBody] String bookingId)
+        {
+            
+
+            var result = await _bookingService.isBookingExpired(bookingId);
+
+            switch (result.Error)
+            {
+                case "NOT_FOUND":
+                    return NotFound("Booking not found");
+                case "EXPIRED":
+                    return Ok(true);
+                default:
+                    return Ok(false);
+            }
+        }
+    
+    
+        [HttpGet("{bookingId}/depositPaid")]
+        public async Task<ActionResult<bool>> depositPaid(string bookingId)
+        {
+            var booking = await _bookingService.getById(bookingId);
+
+            if (booking == null)
+            {
+                return NotFound("Booking not found");
+            }
+
+            if (booking.bookingStatus == booking.status.Confirmed)
+            {
+                return Ok(true);
+            }
+            return Ok(false);
+    
+    
     }
+}
 }

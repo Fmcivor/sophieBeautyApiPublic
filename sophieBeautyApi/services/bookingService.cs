@@ -60,7 +60,7 @@ namespace sophieBeautyApi.services
                 paid = true;
             }
 
-            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed,newBooking.phoneNumber);
+            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.DepositPending,newBooking.phoneNumber);
 
         
 
@@ -85,7 +85,7 @@ namespace sophieBeautyApi.services
 
                 created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
 
-                await _emailService.Send(created);
+                // await _emailService.Send(created);
 
                 return new BookingResult(created);
             }
@@ -275,6 +275,46 @@ namespace sophieBeautyApi.services
         }
 
 
+
+        public async Task<BookingResult> isBookingExpired(string bookingId)
+        {
+
+
+
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+
+            if (booking == null)
+            {
+                return new BookingResult("NOT_FOUND");
+            }
+
+            if (booking.bookingStatus != booking.status.DepositPending)
+            {
+                return new BookingResult("NOT_EXPIRED");
+            }
+
+            if (DateTime.UtcNow > booking.expiryDate.AddSeconds(-25))
+            {
+                booking.bookingStatus = booking.status.Expired;
+                await _bookingRepository.UpdateAsync(booking);
+                
+                return new BookingResult("EXPIRED");
+            }
+
+            return new BookingResult("NOT_EXPIRED");
+        }
+
+
+        public async Task MarkExpiredBookingsAsync()
+        {
+            var expiredBookings = await _bookingRepository.GetExpiredBookingsAsync(DateTime.UtcNow);
+
+            foreach (var booking in expiredBookings)
+            {
+                booking.bookingStatus = booking.status.Expired;
+                await _bookingRepository.UpdateAsync(booking);
+            }
+        }
 
     }
 }

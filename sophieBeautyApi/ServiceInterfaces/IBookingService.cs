@@ -25,5 +25,9 @@ namespace sophieBeautyApi.ServiceInterfaces
         Task<int> getWeeklyRevenue(DateTime date);
 
         Task<int> getMonthlyRevenue(DateTime date);
+
+        Task<BookingResult> isBookingExpired(string bookingId);
+
+        Task MarkExpiredBookingsAsync();
     }
 }

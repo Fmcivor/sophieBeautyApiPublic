@@ -214,7 +214,7 @@ namespace sophieBeautyApi.services
                 htmlBody = htmlBody.Replace("{{customer_name}}", newBooking.customerName);
                 htmlBody = htmlBody.Replace("{{service_name}}", treatmentHtml);
                 htmlBody = htmlBody.Replace("{{start_datetime}}", formattedDate);
-                htmlBody = htmlBody.Replace("{{price}}", "£" + newBooking.cost.ToString());
+                htmlBody = htmlBody.Replace("{{price}}", "£" + newBooking.remainingPayment.ToString());
                 htmlBody = htmlBody.Replace("{{duration}}", newBooking.duration.ToString() + " Minutes");
                 htmlBody = htmlBody.Replace("{{payment_method}}", "Cash");
                 htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");

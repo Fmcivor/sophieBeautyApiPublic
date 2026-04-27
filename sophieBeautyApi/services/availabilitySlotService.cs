@@ -89,7 +89,7 @@ namespace sophieBeautyApi.services
             {
                 TimeSpan existingStart = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay;
                 TimeSpan existingEnd = existingStart.Add(TimeSpan.FromMinutes(b.duration));
-                return bookingTime < existingEnd && bookingEnd > existingStart;
+                return bookingTime < existingEnd && bookingEnd > existingStart && b.bookingStatus != booking.status.Expired;
             });
 
             if (overlap)

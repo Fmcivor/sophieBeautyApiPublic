@@ -107,7 +107,17 @@ namespace sophieBeautyApi.Repositorys
 
             return bookings;
         }
+        
 
+        public async Task<IEnumerable<booking>> GetExpiredBookingsAsync(DateTime utcNow)
+        {
+            var filter = Builders<booking>.Filter.Lt(b => b.expiryDate, utcNow) &
+                         Builders<booking>.Filter.Eq(b => b.bookingStatus, booking.status.DepositPending);
+
+            var expiredBookings = await bookingsTable.Find(filter).ToListAsync();
+
+            return expiredBookings;
+        }
         
     }
 }
