@@ -31,14 +31,12 @@ namespace sophieBeautyApi
 
             try
             {
-                var stripeEvent = EventUtility.ParseEvent(jsonResult);
+                var stripeEvent = EventUtility.ParseEvent(jsonResult, throwOnApiVersionMismatch: false);
 
                 if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
                 {
                     var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                    var metadata = paymentIntent.Metadata;
-                    var jsonMetadata = Newtonsoft.Json.JsonConvert.SerializeObject(metadata);
-                    var bookingId = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(jsonMetadata);
+                    var bookingId = paymentIntent.Metadata["bookingId"];
 
                     var booking = await bookingRepository.GetByIdAsync(bookingId);
 
@@ -48,13 +46,12 @@ namespace sophieBeautyApi
                 else if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
                 {
                     var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                    var metadata = paymentIntent.Metadata;
-                    var jsonMetadata = Newtonsoft.Json.JsonConvert.SerializeObject(metadata);
-                    var bookingId = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(jsonMetadata);
-
+                   
+                    var bookingId = paymentIntent.Metadata["bookingId"];
                     var booking = await bookingRepository.GetByIdAsync(bookingId);
 
-                    await handlePaymentFailed(booking);
+                    // await handlePaymentFailed(booking);
+                    return Ok();
                 }
                 else
                 {
@@ -83,7 +80,6 @@ namespace sophieBeautyApi
         {
 
             booking.bookingStatus = booking.status.Confirmed;
-            booking.remainingPayment = booking.cost - (int)(booking.cost * 0.25);
 
             await emailService.Send(booking);
 
@@ -95,19 +91,19 @@ namespace sophieBeautyApi
 
         }
 
-        private async Task handlePaymentFailed(booking booking)
-        {
-            booking.bookingStatus = booking.status.Expired;
+        // private async Task handlePaymentFailed(booking booking)
+        // {
+        //     booking.bookingStatus = booking.status.Expired;
 
 
-            // await emailService.SendPaymentFailedEmail(booking);
+        //     // await emailService.SendPaymentFailedEmail(booking);
 
-            await bookingRepository.UpdateAsync(booking);
+        //     await bookingRepository.UpdateAsync(booking);
 
-            if (booking.Id != null)
-            {
-                await bookingRepository.DeleteAsync(booking.Id);
-            }
-        }
+        //     if (booking.Id != null)
+        //     {
+        //         await bookingRepository.DeleteAsync(booking.Id);
+        //     }
+        // }
     }
 }

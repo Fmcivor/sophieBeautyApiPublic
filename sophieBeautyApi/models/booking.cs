@@ -57,16 +57,18 @@ namespace sophieBeautyApi.Models
 
         //Stripe fields
         [Required]
-        public DateTime expiryDate { get; set; } = DateTime.UtcNow.AddMinutes(5);
+        public DateTime expiryDate { get; set; } = DateTime.UtcNow.AddMinutes(5).AddSeconds(25);
+        
 
         public String? stripePaymentId { get; set; }
 
         public enum status
         {
+            
+            Confirmed,
+            Completed,
             DepositPending,
             Expired,
-            Confirmed,
-            Completed
         }
 
 
@@ -94,6 +96,7 @@ namespace sophieBeautyApi.Models
             this.bookingStatus = bookingStatus;
             this.reminderSent = false;
             this.phoneNumber = phoneNumber;
+            this.remainingPayment = cost - (int) Math.Round(cost * 0.25);
         }
 
     }

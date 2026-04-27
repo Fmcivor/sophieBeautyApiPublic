@@ -17,6 +17,7 @@ using sophieBeautyApi.RepositoryInterfaces;
 using sophieBeautyApi.Repositorys;
 using sophieBeautyApi.ServiceInterfaces;
 using Stripe;
+using sophieBeautyApi.services.backgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +57,10 @@ builder.Services.AddScoped<jwtTokenHandler>();
 builder.Services.AddScoped<adminService>();
 builder.Services.AddScoped<ICategoryService,categoryService>();
 builder.Services.AddScoped<IEmailService, emailService>();
+
+
+// background service
+builder.Services.AddHostedService<BookingExpiryService>();
 
 
 

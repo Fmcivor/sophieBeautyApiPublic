@@ -38,7 +38,7 @@ namespace sophieBeautyApi.Controllers
             };
 
 
-            int depositDue = (int)(booking.cost * 0.25);
+            int depositDue = (int) Math.Round(booking.cost * 0.25) ;
 
             var option = new PaymentIntentCreateOptions
             {
