@@ -9,6 +9,7 @@ using sophieBeautyApi.services;
 using Newtonsoft.Json;
 using Stripe;
 using sophieBeautyApi.ServiceInterfaces;
+using sophieBeautyApi.RepositoryInterfaces;
 
 namespace sophieBeautyApi.Controllers
 {
@@ -18,11 +19,11 @@ namespace sophieBeautyApi.Controllers
     public class paymentController : ControllerBase
     {
 
-        private readonly IBookingService _bookingService;
+        private readonly IBookingRepository _bookingRepository;
 
-        public paymentController(IBookingService bookingService)
+        public paymentController(IBookingRepository bookingRepository)
         {
-            this._bookingService = bookingService;
+            this._bookingRepository = bookingRepository;
         }
 
 
@@ -58,6 +59,7 @@ namespace sophieBeautyApi.Controllers
             booking.stripePaymentId = intent.Id;
 
             // update the intent id 
+            await _bookingRepository.UpdateAsync(booking);
 
 
             return Ok(new { clientSecret = intent.ClientSecret, reservedBooking = booking });
