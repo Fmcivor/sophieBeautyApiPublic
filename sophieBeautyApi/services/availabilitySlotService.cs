@@ -133,7 +133,7 @@ namespace sophieBeautyApi.services
                         TimeSpan existingStart = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, localZone).TimeOfDay;
                         TimeSpan existingEnd = existingStart.Add(TimeSpan.FromMinutes(b.duration));
 
-                        if (slotStart < existingEnd && slotEnd > existingStart)
+                        if (slotStart < existingEnd && slotEnd > existingStart && b.bookingStatus != booking.status.Expired)
                         {
                             return true;
                         }
