@@ -30,5 +30,7 @@ namespace sophieBeautyApi.ServiceInterfaces
 
         Task MarkExpiredBookingsAsync();
         Task<BookingResult> createBookingAdmin(newBookingDTO newBooking);
+
+        Task<DateTime?> getExpiryTime(string bookingId);
     }
 }

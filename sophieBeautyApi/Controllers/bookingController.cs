@@ -293,5 +293,18 @@ namespace sophieBeautyApi.Controllers
             return Ok();
         }
 
+        [HttpGet("{bookingId}/expiryTime")]
+        public async Task<ActionResult> getExpiryTime(String bookingId){
+
+            var expiryTime =await _bookingService.getExpiryTime(bookingId);
+            if(expiryTime == null){
+                return NotFound("Booking not found");
+            }
+
+            expiryTime = expiryTime.Value.AddSeconds(-25);
+            return Ok(expiryTime);
+            
+        }
+
     }
 }

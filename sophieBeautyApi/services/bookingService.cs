@@ -375,5 +375,17 @@ namespace sophieBeautyApi.services
             }
         }
 
+
+        public async Task<DateTime?> getExpiryTime(string bookingId)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+
+            if (booking == null)
+            {
+                return null;
+            }
+
+            return booking.expiryDate;
+        }
     }
 }
