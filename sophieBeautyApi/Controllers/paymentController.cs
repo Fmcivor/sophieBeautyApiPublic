@@ -63,6 +63,8 @@ namespace sophieBeautyApi.Controllers
             // update the intent id 
             await _bookingRepository.UpdateAsync(booking);
 
+            TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
 
             return Ok(new { clientSecret = intent.ClientSecret, reservedBooking = booking });
             }
