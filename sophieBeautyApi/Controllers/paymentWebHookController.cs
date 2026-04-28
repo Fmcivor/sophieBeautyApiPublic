@@ -110,10 +110,7 @@ namespace sophieBeautyApi
 
             await bookingRepository.UpdateAsync(booking);
 
-            if (booking.Id != null)
-            {
-                await bookingRepository.DeleteAsync(booking.Id);
-            }
+            
         }
 
         private async Task handlePaymentFailed(booking booking, PaymentIntent intent)
@@ -134,10 +131,7 @@ namespace sophieBeautyApi
 
             await bookingRepository.UpdateAsync(booking);
 
-            if (booking.Id != null)
-            {
-                await bookingRepository.DeleteAsync(booking.Id);
-            }
+           
 
         }
 
