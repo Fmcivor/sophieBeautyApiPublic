@@ -28,9 +28,11 @@ namespace sophieBeautyApi.Controllers
 
 
         [HttpPost("create-payment-intent")]
-        public async Task<ActionResult> createPaymentIntent([FromBody] booking booking)
+        public async Task<ActionResult> createPaymentIntent([FromBody] String bookingId)
         {
             try{
+
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
             var metadata = new Dictionary<string, string>
             {
                 {"bookingId", booking.Id.ToString()},
@@ -67,7 +69,7 @@ namespace sophieBeautyApi.Controllers
             catch (StripeException stripeEx)
             {
 
-                if (booking != null)
+                if (bookingId != null)
                 {
                     // await _bookingService.cancelBooking(booking._id);
                 }
@@ -77,7 +79,7 @@ namespace sophieBeautyApi.Controllers
             }
             catch(Exception ex)
             {
-                if (booking != null)
+                if (bookingId != null)
                 {
                     // await _bookingService.cancelBooking(booking._id);
                 }
