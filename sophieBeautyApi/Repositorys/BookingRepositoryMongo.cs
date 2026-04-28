@@ -112,7 +112,11 @@ namespace sophieBeautyApi.Repositorys
         public async Task<IEnumerable<booking>> GetExpiredBookingsAsync(DateTime utcNow)
         {
             var filter = Builders<booking>.Filter.Lt(b => b.expiryDate, utcNow) &
-                         Builders<booking>.Filter.Eq(b => b.bookingStatus, booking.status.DepositPending);
+             Builders<booking>.Filter.Or(
+                 Builders<booking>.Filter.Eq(b => b.bookingStatus, booking.status.DepositPending),
+                 Builders<booking>.Filter.Eq(b => b.bookingStatus, booking.status.FailedRetryable),
+                 Builders<booking>.Filter.Eq(b => b.bookingStatus, booking.status.RequiresAction)
+             );
 
             var expiredBookings = await bookingsTable.Find(filter).ToListAsync();
 
