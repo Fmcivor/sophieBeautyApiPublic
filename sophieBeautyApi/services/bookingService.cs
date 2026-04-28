@@ -95,7 +95,66 @@ namespace sophieBeautyApi.services
             }
         }
 
+        public async Task<BookingResult> createBookingAdmin(newBookingDTO newBooking)
+        {
+            var treatments = await _treatmentService.getListByIds(newBooking.treatmentIds);
 
+
+            List<string> treatmentNames = new List<string>();
+            int duration = 0;
+            int price = 0;
+
+            foreach (var t in treatments)
+            {
+                treatmentNames.Add(t.name);
+                duration += t.duration;
+                price += t.price;
+            }
+
+            duration = (int)(Math.Ceiling(duration / 30.0) * 30);
+
+            bool paid = false;
+            if (newBooking.payByCard)
+            {
+                paid = true;
+            }
+
+            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed,newBooking.phoneNumber);
+
+        
+            bool withinAvailableTimeSlot = await _availabilityService.bookingWithinAvailabilitySlot(booking.appointmentDate, booking.duration);
+
+            if (!withinAvailableTimeSlot)
+            {
+                return new BookingResult("TAKEN");
+            }
+
+            try
+            {
+                var created = await _bookingRepository.CreateAsync(booking);
+
+                // Null check
+                if (created == null)
+                {
+                    return new BookingResult("SERVER_ERROR");
+                }
+
+                var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+                created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
+
+                // await _emailService.Send(created);
+
+                return new BookingResult(created);
+            }
+            catch (Exception)
+            {
+                return new BookingResult("SERVER_ERROR");
+            }
+
+
+        
+        }
         public async Task<booking?> getById(string id)
         {
             return await _bookingRepository.GetByIdAsync(id);
@@ -293,7 +352,7 @@ namespace sophieBeautyApi.services
                 return new BookingResult("NOT_EXPIRED");
             }
 
-            if (DateTime.UtcNow > booking.expiryDate.AddSeconds(-25))
+            if (DateTime.UtcNow > booking.expiryDate.AddSeconds(-25) && booking.bookingStatus == booking.status.DepositPending)
             {
                 booking.bookingStatus = booking.status.Expired;
                 await _bookingRepository.UpdateAsync(booking);

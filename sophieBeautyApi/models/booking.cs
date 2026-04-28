@@ -62,6 +62,8 @@ namespace sophieBeautyApi.Models
 
         public String? stripePaymentId { get; set; }
 
+
+        
         public enum status
         {
             
@@ -69,6 +71,9 @@ namespace sophieBeautyApi.Models
             Completed,
             DepositPending,
             Expired,
+            RequiresAction,
+            FailedRetryable,
+            Processing
         }
 
 

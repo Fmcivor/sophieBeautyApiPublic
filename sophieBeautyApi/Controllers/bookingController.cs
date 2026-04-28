@@ -15,15 +15,15 @@ namespace sophieBeautyApi.Controllers
     public class bookingController : ControllerBase
     {
         private readonly IBookingService _bookingService;
-        
-        
 
-        
+
+
+
 
         public bookingController(IBookingService bookingService)
         {
             this._bookingService = bookingService;
-            
+
         }
 
 
@@ -52,7 +52,7 @@ namespace sophieBeautyApi.Controllers
                 switch (result.Error)
                 {
                     case "TAKEN":
-                        return BadRequest("TAKEN, Sorry the booking slo has already been taken");
+                        return BadRequest("TAKEN, Sorry the booking slot has already been taken");
                     case "NO_SLOT":
                         return BadRequest("There is no availability slot for the time chosen");
                     case "SERVER_ERROR":
@@ -64,7 +64,7 @@ namespace sophieBeautyApi.Controllers
 
             if (result.Booking == null)
             {
-                return StatusCode(500, "An error occurred when creating the booking"); 
+                return StatusCode(500, "An error occurred when creating the booking");
             }
 
 
@@ -73,45 +73,47 @@ namespace sophieBeautyApi.Controllers
             result.Booking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
 
             // return CreatedAtAction(nameof(create), result.Booking.Id);
-            return CreatedAtAction(nameof(create),result.Booking);
+            return CreatedAtAction(nameof(create), result.Booking);
         }
 
 
-        // [Authorize]
-        // [HttpPost("specialCreate")]
-        // public async Task<ActionResult> specialCreate([FromBody] newBookingDTO newBooking)
-        // {
-        //     if (!ModelState.IsValid)
-        //     {
-        //         return BadRequest(ModelState);
-        //     }
+        [Authorize]
+        [HttpPost("Create-Admin")]
+        public async Task<ActionResult> createAdmin([FromBody] newBookingDTO newBooking)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //     var treatment = await _treatmentService.getById(newBooking.treatmentId);
 
-        //     bool paid = false;
-        //     if (newBooking.payByCard)
-        //     {
-        //         paid = true;
-        //     }
+            var result = await _bookingService.createBookingAdmin(newBooking);
 
-        //     booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatment.name, (int)treatment.price, treatment.duration, newBooking.payByCard, paid, booking.status.Confirmed);
+            if (result.IsSuccess == false)
+            {
+                switch (result.Error)
+                {
+                    case "TAKEN":
+                        return BadRequest("TAKEN, Sorry the booking slot has already been taken");
+                    case "NO_SLOT":
+                        return BadRequest("There is no availability slot for the time chosen");
+                    case "SERVER_ERROR":
+                        return StatusCode(500, "An error occurred while creating the booking");
+                    default:
+                        return StatusCode(500, "An unexpected error occurred");
+                }
+            }
 
-        //     var existingBooking = await _bookingService.bookingOnDate(booking.appointmentDate);
+            if (result.Booking == null)
+            {
+                return StatusCode(500, "An error occurred when creating the booking");
+            }
 
-        //     if (existingBooking != null)
-        //     {
-        //         return BadRequest("TAKEN,Sorry the booking slot has already been taken");
-        //     }
 
-        //     booking = await _bookingService.create(booking);
-
-        //     var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-        //     booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, ukZone);
-
-        //     return CreatedAtAction(nameof(create), booking);
-        // }
-
+            
+            // return CreatedAtAction(nameof(create), result.Booking.Id);
+            return CreatedAtAction(nameof(create), result.Booking);
+        }
 
 
         [Authorize]
@@ -150,12 +152,12 @@ namespace sophieBeautyApi.Controllers
                 switch (result.Error)
                 {
                     case "NOT_FOUND":
-                        return  NotFound("Booking not found");
+                        return NotFound("Booking not found");
                     default:
-                        return StatusCode(500,"An unexpected error occurred");
+                        return StatusCode(500, "An unexpected error occurred");
                 }
             }
-            
+
             return NoContent();
         }
 
@@ -183,7 +185,7 @@ namespace sophieBeautyApi.Controllers
                 return NotFound();
             }
 
-    
+
             return Ok(bookingsToday);
         }
 
@@ -226,7 +228,7 @@ namespace sophieBeautyApi.Controllers
         [HttpPost("expired")]
         public async Task<ActionResult<bool>> isExpired([FromBody] String bookingId)
         {
-            
+
 
             var result = await _bookingService.isBookingExpired(bookingId);
 
@@ -240,8 +242,8 @@ namespace sophieBeautyApi.Controllers
                     return Ok(false);
             }
         }
-    
-    
+
+
         [HttpGet("{bookingId}/depositPaid")]
         public async Task<ActionResult<bool>> depositPaid(string bookingId)
         {
@@ -257,8 +259,39 @@ namespace sophieBeautyApi.Controllers
                 return Ok(true);
             }
             return Ok(false);
-    
-    
+
+
+        }
+
+
+        [HttpGet("{bookingId}/canRetryPayment")]
+        public async Task<ActionResult<bool>> canRetryPayment(string bookingId)
+        {
+            var b = await _bookingService.getById(bookingId);
+
+            if (b == null)
+            {
+                return NotFound("Booking not found");
+            }
+
+            bool canRetry = false;
+
+            if (b.bookingStatus == booking.status.FailedRetryable)
+            {
+                canRetry = true;
+            }
+
+            return Ok(canRetry);
     }
-}
+
+
+        [HttpPut("{bookingId}/markExpired")]
+        public async Task<ActionResult> markExpired(string bookingId)
+        {
+            await _bookingService.MarkExpiredBookingsAsync();
+
+            return Ok();
+        }
+
+    }
 }
