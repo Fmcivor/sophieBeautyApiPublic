@@ -121,7 +121,8 @@ namespace sophieBeautyApi.services
 
             booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed,newBooking.phoneNumber);
 
-        
+            booking.remainingPayment = booking.cost;
+
             bool withinAvailableTimeSlot = await _availabilityService.bookingWithinAvailabilitySlot(booking.appointmentDate, booking.duration);
 
             if (!withinAvailableTimeSlot)

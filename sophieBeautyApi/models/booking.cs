@@ -104,5 +104,7 @@ namespace sophieBeautyApi.Models
             this.remainingPayment = cost - (int) Math.Round(cost * 0.25);
         }
 
+        
+
     }
 }
