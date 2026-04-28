@@ -276,10 +276,13 @@ namespace sophieBeautyApi.Controllers
 
             bool canRetry = false;
 
-            if (b.bookingStatus == booking.status.FailedRetryable)
+            if (b.expiryDate < DateTime.UtcNow && b.bookingStatus != booking.status.Confirmed && b.bookingStatus != booking.status.Expired)
             {
                 canRetry = true;
             }
+            
+
+
 
             return Ok(canRetry);
     }
