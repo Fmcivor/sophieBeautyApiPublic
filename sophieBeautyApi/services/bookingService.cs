@@ -71,6 +71,12 @@ namespace sophieBeautyApi.services
                 return new BookingResult("TAKEN");
             }
 
+            if (booking.cost < 2)
+            {
+                // expirytime doesnt matter due to status
+                booking.bookingStatus = booking.status.Confirmed;
+            }
+
             try
             {
                 var created = await _bookingRepository.CreateAsync(booking);
@@ -85,8 +91,6 @@ namespace sophieBeautyApi.services
 
                 created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
 
-                // await _emailService.Send(created);
-
                 return new BookingResult(created);
             }
             catch (Exception)
@@ -94,6 +98,10 @@ namespace sophieBeautyApi.services
                 return new BookingResult("SERVER_ERROR");
             }
         }
+
+
+
+
 
         public async Task<BookingResult> createBookingAdmin(newBookingDTO newBooking)
         {

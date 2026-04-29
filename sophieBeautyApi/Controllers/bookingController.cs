@@ -15,14 +15,15 @@ namespace sophieBeautyApi.Controllers
     public class bookingController : ControllerBase
     {
         private readonly IBookingService _bookingService;
+        private readonly IPaymentService _paymentService;
 
 
 
 
-
-        public bookingController(IBookingService bookingService)
+        public bookingController(IBookingService bookingService, IPaymentService paymentService)
         {
             this._bookingService = bookingService;
+            this._paymentService = paymentService;
 
         }
 
@@ -67,13 +68,29 @@ namespace sophieBeautyApi.Controllers
                 return StatusCode(500, "An error occurred when creating the booking");
             }
 
-
+            booking createdBooking = result.Booking;
             //remove 25 seconds from expiray time
 
-            result.Booking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
+            // determine if booking requires deposit
+
+            if (createdBooking.bookingStatus == booking.status.Confirmed)
+            {
+                return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = (string?)null });
+            }
+
+
+            string? clientSecret = await _paymentService.CreatePaymentIntent(createdBooking); 
+            
+            
+            if (clientSecret == null)
+            {
+                return StatusCode(500, "An error occurred generating a Stripe payment intent");
+            }
+
+            createdBooking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
 
             // return CreatedAtAction(nameof(create), result.Booking.Id);
-            return CreatedAtAction(nameof(create), result.Booking);
+            return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = clientSecret});
         }
 
 

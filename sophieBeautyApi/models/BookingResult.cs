@@ -6,6 +6,7 @@ namespace sophieBeautyApi.Models
         public booking? Booking { get; }
         public string? Error { get; }
         public bool IsSuccess {get; }
+        
 
         // Success
         public BookingResult(booking booking)
