@@ -30,6 +30,10 @@ namespace sophieBeautyApi.Controllers
         [HttpPost("create-payment-intent")]
         public async Task<ActionResult> createPaymentIntent([FromBody] String bookingId)
         {
+
+            TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+
             try
             {
 
@@ -46,7 +50,16 @@ namespace sophieBeautyApi.Controllers
 
                 if (depositDue <= 0)
                 {
+
+                    booking.stripePaymentId = "no payment required";
+                    booking.paid = true;
+                    booking.bookingStatus = booking.status.Confirmed;
+
+                    await _bookingRepository.UpdateAsync(booking);
+
+                    booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
                     return Ok(new { clientSecret = (string?)null, reservedBooking = booking });
+
                 }
 
                 var option = new PaymentIntentCreateOptions
@@ -69,7 +82,6 @@ namespace sophieBeautyApi.Controllers
                 // update the intent id 
                 await _bookingRepository.UpdateAsync(booking);
 
-                TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
                 booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
 
                 return Ok(new { clientSecret = intent.ClientSecret, reservedBooking = booking });
