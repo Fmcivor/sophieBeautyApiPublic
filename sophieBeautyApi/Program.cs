@@ -24,8 +24,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Azure Key Vault
 builder.Configuration.AddAzureKeyVault(
     new Uri("https://sophiebeautykeys.vault.azure.net/"),
-    new ManagedIdentityCredential()
-    // new InteractiveBrowserCredential()
+    // new ManagedIdentityCredential()
+    new InteractiveBrowserCredential()
 );
 
 StripeConfiguration.ApiKey = builder.Configuration["StripeSecretKey"]
@@ -57,6 +57,7 @@ builder.Services.AddScoped<jwtTokenHandler>();
 builder.Services.AddScoped<adminService>();
 builder.Services.AddScoped<ICategoryService,categoryService>();
 builder.Services.AddScoped<IEmailService, emailService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();  
 
 
 // background service
