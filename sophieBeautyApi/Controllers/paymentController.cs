@@ -30,7 +30,7 @@ namespace sophieBeautyApi.Controllers
 
 
         [HttpPost("create-payment-intent")]
-        public async Task<IActionResult> CreatePaymentIntent(string bookingId)
+        public async Task<IActionResult> CreatePaymentIntent([FromBody] string bookingId)
         {
             TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
