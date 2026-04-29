@@ -87,10 +87,6 @@ namespace sophieBeautyApi.services
                     return new BookingResult("SERVER_ERROR");
                 }
 
-                var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-                created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
-
                 return new BookingResult(created);
             }
             catch (Exception)
@@ -147,10 +143,6 @@ namespace sophieBeautyApi.services
                 {
                     return new BookingResult("SERVER_ERROR");
                 }
-
-                var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-                created.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(created.appointmentDate, ukZone);
 
                 // await _emailService.Send(created);
 
@@ -395,6 +387,31 @@ namespace sophieBeautyApi.services
             }
 
             return booking.expiryDate;
+        }
+
+        private static booking CreateClientBooking(booking source)
+        {
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+
+            return new booking(
+                source.customerName,
+                TimeZoneInfo.ConvertTimeFromUtc(source.appointmentDate, ukZone),
+                source.email,
+                new List<string>(source.treatmentNames),
+                source.cost,
+                source.duration,
+                source.payByCard,
+                source.paid,
+                source.bookingStatus,
+                source.phoneNumber)
+            {
+                Id = source.Id,
+                reminderSent = source.reminderSent,
+                remainingPayment = source.remainingPayment,
+                expiryDate = source.expiryDate,
+                stripePaymentId = source.stripePaymentId,
+                stripeId = source.stripeId
+            };
         }
     }
 }

@@ -20,6 +20,11 @@ namespace sophieBeautyApi.services
         {
             //null check done in booking controller
 
+            if (string.IsNullOrWhiteSpace(b.Id))
+            {
+                return null;
+            }
+
 
             // define payment metadata
             var metadata = new Dictionary<String, String>

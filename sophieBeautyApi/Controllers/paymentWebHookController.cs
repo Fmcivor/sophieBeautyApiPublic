@@ -87,10 +87,13 @@ namespace sophieBeautyApi
 
         private async Task handPaymentSucceeded(booking booking)
         {
+            if (booking == null)
+            {
+                Console.WriteLine("Booking not found for successful payment event.");
+                return;
+            }
 
             booking.bookingStatus = booking.status.Confirmed;
-
-            await emailService.Send(booking);
 
             if (!await bookingRepository.UpdateAsync(booking))
             {
@@ -98,10 +101,18 @@ namespace sophieBeautyApi
                 return;
             }
 
+            await emailService.Send(booking);
+
         }
 
         private async Task handlePaymentRequiresAction(booking booking)
         {
+            if (booking == null)
+            {
+                Console.WriteLine("Booking not found for requires-action payment event.");
+                return;
+            }
+
             booking.bookingStatus = booking.status.RequiresAction;
             booking.expiryDate = DateTime.UtcNow.AddMinutes(2);
 
@@ -115,6 +126,11 @@ namespace sophieBeautyApi
 
         private async Task handlePaymentFailed(booking booking, PaymentIntent intent)
         {
+            if (booking == null)
+            {
+                Console.WriteLine("Booking not found for failed payment event.");
+                return;
+            }
 
             bool canRetry = CanRetryPayment(intent, booking.expiryDate);
 

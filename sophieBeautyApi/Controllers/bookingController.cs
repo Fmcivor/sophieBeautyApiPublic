@@ -72,9 +72,12 @@ namespace sophieBeautyApi.Controllers
             //remove 25 seconds from expiray time
 
             // determine if booking requires deposit
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
             if (createdBooking.bookingStatus == booking.status.Confirmed)
             {
+                
+                createdBooking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(createdBooking.appointmentDate, ukZone);
                 return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = (string?)null });
             }
 
@@ -88,6 +91,7 @@ namespace sophieBeautyApi.Controllers
             }
 
             createdBooking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
+            createdBooking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(createdBooking.appointmentDate, ukZone);
 
             // return CreatedAtAction(nameof(create), result.Booking.Id);
             return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = clientSecret});

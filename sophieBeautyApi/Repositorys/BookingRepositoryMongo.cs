@@ -38,7 +38,7 @@ namespace sophieBeautyApi.Repositorys
         {
             var filter = Builders<booking>.Filter.Eq(b => b.Id, updatedBooking.Id);
             var result = await bookingsTable.ReplaceOneAsync(filter, updatedBooking);
-            return result.ModifiedCount>1;
+            return result.MatchedCount > 0;
         }
 
         public async Task<bool> MarkReminderSentAsync(booking updatedBooking)
