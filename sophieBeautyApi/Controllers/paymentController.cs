@@ -30,10 +30,11 @@ namespace sophieBeautyApi.Controllers
         [HttpPost("create-payment-intent")]
         public async Task<ActionResult> createPaymentIntent([FromBody] String bookingId)
         {
-            try{
+            try
+            {
 
-            var booking = await _bookingRepository.GetByIdAsync(bookingId);
-            var metadata = new Dictionary<string, string>
+                var booking = await _bookingRepository.GetByIdAsync(bookingId);
+                var metadata = new Dictionary<string, string>
             {
                 {"bookingId", booking.Id.ToString()},
                 {"customerName", booking.customerName},
@@ -41,32 +42,37 @@ namespace sophieBeautyApi.Controllers
             };
 
 
-            int depositDue = (int) Math.Round(booking.cost * 0.25) ;
+                int depositDue = (int)Math.Round(booking.cost * 0.25);
 
-            var option = new PaymentIntentCreateOptions
-            {
-                Amount = depositDue*100,
-                Currency = "gbp",
-                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                if (depositDue <= 0)
                 {
-                    Enabled = true,
-                },
-                Metadata = metadata,
-                ReceiptEmail = booking.email
-            };
+                    return Ok(new { clientSecret = (string?)null, reservedBooking = booking });
+                }
 
-            var service = new PaymentIntentService();
-            PaymentIntent intent = await service.CreateAsync(option);
+                var option = new PaymentIntentCreateOptions
+                {
+                    Amount = depositDue * 100,
+                    Currency = "gbp",
+                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                    {
+                        Enabled = true,
+                    },
+                    Metadata = metadata,
+                    ReceiptEmail = booking.email
+                };
 
-            booking.stripePaymentId = intent.Id;
+                var service = new PaymentIntentService();
+                PaymentIntent intent = await service.CreateAsync(option);
 
-            // update the intent id 
-            await _bookingRepository.UpdateAsync(booking);
+                booking.stripePaymentId = intent.Id;
 
-            TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-            booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
+                // update the intent id 
+                await _bookingRepository.UpdateAsync(booking);
 
-            return Ok(new { clientSecret = intent.ClientSecret, reservedBooking = booking });
+                TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+                booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
+
+                return Ok(new { clientSecret = intent.ClientSecret, reservedBooking = booking });
             }
             catch (StripeException stripeEx)
             {
@@ -76,10 +82,10 @@ namespace sophieBeautyApi.Controllers
                     // await _bookingService.cancelBooking(booking._id);
                 }
 
-                return StatusCode(StatusCodes.Status500InternalServerError, new {message = "Error creating payment intent", details = stripeEx.Message});
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error creating payment intent", details = stripeEx.Message });
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 if (bookingId != null)
                 {
