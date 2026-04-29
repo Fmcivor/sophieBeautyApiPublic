@@ -20,10 +20,12 @@ namespace sophieBeautyApi.Controllers
     {
 
         private readonly IBookingRepository _bookingRepository;
+        private readonly IEmailService _emailService;
 
-        public paymentController(IBookingRepository bookingRepository)
+        public paymentController(IBookingRepository bookingRepository, IEmailService emailService)
         {
             this._bookingRepository = bookingRepository;
+            this._emailService = emailService;
         }
 
 
@@ -67,8 +69,10 @@ namespace sophieBeautyApi.Controllers
                         return StatusCode(500, new { message = "Failed to confirm booking" });
                     }
 
-                    booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
 
+                    await _emailService.Send(booking);
+                    booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
+                    
                     return Ok(new
                     {
                         clientSecret = (string?)null,
