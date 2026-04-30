@@ -29,122 +29,122 @@ namespace sophieBeautyApi.Controllers
         }
 
 
-        [HttpPost("create-payment-intent")]
-        public async Task<IActionResult> CreatePaymentIntent([FromBody] string bookingId)
-        {
-            TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+        // [HttpPost("create-payment-intent")]
+        // public async Task<IActionResult> CreatePaymentIntent([FromBody] string bookingId)
+        // {
+        //     TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
-            booking? booking = null;
+        //     booking? booking = null;
 
-            try
-            {
-                booking = await _bookingRepository.GetByIdAsync(bookingId);
+        //     try
+        //     {
+        //         booking = await _bookingRepository.GetByIdAsync(bookingId);
 
-                if (booking == null)
-                {
-                    return NotFound(new { message = "Booking not found" });
-                }
+        //         if (booking == null)
+        //         {
+        //             return NotFound(new { message = "Booking not found" });
+        //         }
 
-                var metadata = new Dictionary<string, string>
-                {
-                    { "bookingId", booking.Id.ToString() },
-                    { "customerName", booking.customerName },
-                };
+        //         var metadata = new Dictionary<string, string>
+        //         {
+        //             { "bookingId", booking.Id.ToString() },
+        //             { "customerName", booking.customerName },
+        //         };
 
-                int depositDue = (int)Math.Round(booking.cost * 0.25);
+        //         int depositDue = (int)Math.Round(booking.cost * 0.25);
 
                 
-                if (depositDue <= 0)
-                {
-                    try
-                    {
-                        booking.stripePaymentId = "no payment required";
-                        booking.paid = true;
-                        booking.bookingStatus = booking.status.Confirmed;
+        //         if (depositDue <= 0)
+        //         {
+        //             try
+        //             {
+        //                 booking.stripePaymentId = "no payment required";
+        //                 booking.paid = true;
+        //                 booking.bookingStatus = booking.status.Confirmed;
 
-                        await _bookingRepository.UpdateAsync(booking);
-                    }
-                    catch (Exception)
-                    {
-                        return StatusCode(500, new { message = "Failed to confirm booking" });
-                    }
+        //                 await _bookingRepository.UpdateAsync(booking);
+        //             }
+        //             catch (Exception)
+        //             {
+        //                 return StatusCode(500, new { message = "Failed to confirm booking" });
+        //             }
 
 
-                    await _emailService.Send(booking);
-                    booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
+        //             await _emailService.Send(booking);
+        //             booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
                     
-                    return Ok(new
-                    {
-                        clientSecret = (string?)null,
-                        reservedBooking = booking
-                    });
-                }
+        //             return Ok(new
+        //             {
+        //                 clientSecret = (string?)null,
+        //                 reservedBooking = booking
+        //             });
+        //         }
 
                 
-                var options = new PaymentIntentCreateOptions
-                {
-                    Amount = depositDue * 100,
-                    Currency = "gbp",
-                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
-                    {
-                        Enabled = true,
-                    },
-                    Metadata = metadata,
-                    ReceiptEmail = booking.email
-                };
+        //         var options = new PaymentIntentCreateOptions
+        //         {
+        //             Amount = depositDue * 100,
+        //             Currency = "gbp",
+        //             AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+        //             {
+        //                 Enabled = true,
+        //             },
+        //             Metadata = metadata,
+        //             ReceiptEmail = booking.email
+        //         };
 
-                var service = new PaymentIntentService();
-                PaymentIntent intent = await service.CreateAsync(options);
+        //         var service = new PaymentIntentService();
+        //         PaymentIntent intent = await service.CreateAsync(options);
 
-                try
-                {
-                    booking.stripePaymentId = intent.Id;
-                    await _bookingRepository.UpdateAsync(booking);
-                }
-                catch (Exception)
-                {
-                    // rollback Stripe side to avoid mismatch
-                    await service.CancelAsync(intent.Id);
+        //         try
+        //         {
+        //             booking.stripePaymentId = intent.Id;
+        //             await _bookingRepository.UpdateAsync(booking);
+        //         }
+        //         catch (Exception)
+        //         {
+        //             // rollback Stripe side to avoid mismatch
+        //             await service.CancelAsync(intent.Id);
 
-                    return StatusCode(500, new { message = "Failed to save payment intent" });
-                }
+        //             return StatusCode(500, new { message = "Failed to save payment intent" });
+        //         }
 
-                booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
+        //         booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, timeZoneInfo);
 
-                return Ok(new
-                {
-                    clientSecret = intent.ClientSecret,
-                    reservedBooking = booking
-                });
-            }
-            catch (StripeException stripeEx)
-            {
-                // optional: cancel booking if needed
-                if (booking != null)
-                {
-                    // await _bookingService.cancelBooking(booking.Id);
-                }
+        //         return Ok(new
+        //         {
+        //             clientSecret = intent.ClientSecret,
+        //             reservedBooking = booking
+        //         });
+        //     }
+        //     catch (StripeException stripeEx)
+        //     {
+        //         // optional: cancel booking if needed
+        //         if (booking != null)
+        //         {
+        //             // await _bookingService.cancelBooking(booking.Id);
+        //         }
 
-                return StatusCode(500, new
-                {
-                    message = "Error creating payment intent",
-                    details = stripeEx.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                if (booking != null)
-                {
-                    // await _bookingService.cancelBooking(booking.Id);
-                }
+        //         return StatusCode(500, new
+        //         {
+        //             message = "Error creating payment intent",
+        //             details = stripeEx.Message
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         if (booking != null)
+        //         {
+        //             // await _bookingService.cancelBooking(booking.Id);
+        //         }
 
-                return StatusCode(500, new
-                {
-                    message = "An unexpected error occurred",
-                    details = ex.Message
-                });
-            }
-        }
+        //         return StatusCode(500, new
+        //         {
+        //             message = "An unexpected error occurred",
+        //             details = ex.Message
+        //         });
+        //     }
+        // }
 
     }
 }

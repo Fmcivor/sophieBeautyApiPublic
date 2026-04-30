@@ -29,6 +29,8 @@ namespace sophieBeautyApi.ServiceInterfaces
         Task<BookingResult> isBookingExpired(string bookingId);
 
         Task MarkExpiredBookingsAsync();
+
+        Task deleteOldExpiredBookingsAsync();
         Task<BookingResult> createBookingAdmin(newBookingDTO newBooking);
 
         Task<DateTime?> getExpiryTime(string bookingId);

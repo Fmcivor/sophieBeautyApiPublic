@@ -376,6 +376,15 @@ namespace sophieBeautyApi.services
             }
         }
 
+        public async Task deleteOldExpiredBookingsAsync()
+        {
+            var oldExpiredBookings = await _bookingRepository.getOldExpiredBookingsAsync(DateTime.UtcNow.AddDays(-2));
+
+            foreach (var booking in oldExpiredBookings)
+            {
+                await _bookingRepository.DeleteAsync(booking.Id!);
+            }
+        }
 
         public async Task<DateTime?> getExpiryTime(string bookingId)
         {

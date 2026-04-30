@@ -17,5 +17,7 @@ namespace sophieBeautyApi.RepositoryInterfaces
         Task<IEnumerable<booking>> GetNextDayBookingsAsync(DateTime start, DateTime end);
         Task<IEnumerable<booking>> getBookingsByDateRange(DateTime start, DateTime end, booking.status status);
         Task<IEnumerable<booking>> GetExpiredBookingsAsync(DateTime utcNow);
+
+        Task<IEnumerable<booking>> getOldExpiredBookingsAsync(DateTime cutoffDate);
     }
 }

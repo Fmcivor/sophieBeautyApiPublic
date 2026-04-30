@@ -24,6 +24,9 @@ namespace sophieBeautyApi.services.backgroundServices
                     var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
                     await bookingService.MarkExpiredBookingsAsync();
+
+
+                    await bookingService.deleteOldExpiredBookingsAsync();
                 }
                 catch (Exception ex)
                 {
