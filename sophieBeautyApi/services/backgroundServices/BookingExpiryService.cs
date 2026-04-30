@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services.backgroundServices
@@ -7,10 +8,12 @@ namespace sophieBeautyApi.services.backgroundServices
     public class BookingExpiryService : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<BookingExpiryService> _logger;
 
-        public BookingExpiryService(IServiceScopeFactory scopeFactory)
+        public BookingExpiryService(IServiceScopeFactory scopeFactory, ILogger<BookingExpiryService> logger)
         {
             _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -30,8 +33,7 @@ namespace sophieBeautyApi.services.backgroundServices
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error in BookingExpiryService: {ex.Message}");
-                    
+                    _logger.LogError(ex, "Error in BookingExpiryService");
                 }
 
 
@@ -39,8 +41,6 @@ namespace sophieBeautyApi.services.backgroundServices
             }
 
         }
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
 }
