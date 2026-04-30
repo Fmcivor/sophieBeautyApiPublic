@@ -269,8 +269,8 @@ namespace sophieBeautyApi.Controllers
         }
 
 
-        [HttpGet("{bookingId}/depositPaid")]
-        public async Task<ActionResult<bool>> depositPaid(string bookingId)
+        [HttpGet("{bookingId}/bookingStatus")]
+        public async Task<ActionResult> bookingStatus(string bookingId)
         {
             var booking = await _bookingService.getById(bookingId);
 
@@ -281,9 +281,14 @@ namespace sophieBeautyApi.Controllers
 
             if (booking.bookingStatus == booking.status.Confirmed)
             {
-                return Ok(true);
+                return Ok(new { status = "Confirmed" });
             }
-            return Ok(false);
+            else if (booking.expiryDate < DateTime.UtcNow)
+            {
+                await _bookingService.MarkExpiredBookingsAsync();
+                return Ok(new { status = "Expired" });
+            }
+            return Ok(new { status = "Pending" });
 
 
         }
