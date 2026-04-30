@@ -17,14 +17,16 @@ namespace sophieBeautyApi.Controllers
         private readonly IBookingService _bookingService;
         private readonly IPaymentService _paymentService;
 
+        private readonly IEmailService _emailService;
 
 
 
-        public bookingController(IBookingService bookingService, IPaymentService paymentService)
+
+        public bookingController(IBookingService bookingService, IPaymentService paymentService, IEmailService emailService)
         {
             this._bookingService = bookingService;
             this._paymentService = paymentService;
-
+            this._emailService = emailService;
         }
 
 
@@ -78,6 +80,8 @@ namespace sophieBeautyApi.Controllers
             {
                 
                 createdBooking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(createdBooking.appointmentDate, ukZone);
+
+                await _emailService.Send(createdBooking);
                 return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = (string?)null });
             }
 
