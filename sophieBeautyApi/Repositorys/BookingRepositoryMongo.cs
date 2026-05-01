@@ -58,8 +58,10 @@ namespace sophieBeautyApi.Repositorys
 
         public async Task<IEnumerable<booking>> GetBookingsByDateAsync(DateTime start, DateTime end)
         {
-            var filter = Builders<booking>.Filter.Gte(b => b.appointmentDate, start) &
-                         Builders<booking>.Filter.Lt(b => b.appointmentDate, end);
+            var filter =
+                        Builders<booking>.Filter.Gte(b => b.appointmentDate, start) &
+                        Builders<booking>.Filter.Lt(b => b.appointmentDate, end) &
+                        Builders<booking>.Filter.Ne(b => b.bookingStatus, booking.status.Expired);
 
             var bookings = await bookingsTable.Find(filter).ToListAsync();
             return bookings;
@@ -73,9 +75,9 @@ namespace sophieBeautyApi.Repositorys
 
         public async Task<IEnumerable<booking>> GetTodaysBookingAsync(DateTime start, DateTime end)
         {
-            
+
             var bookings = await bookingsTable.Find(
-                b => b.appointmentDate >= start && 
+                b => b.appointmentDate >= start &&
                 b.appointmentDate < end &&
                 b.bookingStatus == booking.status.Confirmed
             ).ToListAsync();
@@ -93,7 +95,7 @@ namespace sophieBeautyApi.Repositorys
         {
             var bookings = await bookingsTable.Find(
                 b => b.appointmentDate >= start &&
-                b.appointmentDate < end && 
+                b.appointmentDate < end &&
                 b.bookingStatus == booking.status.Confirmed
             ).ToListAsync();
 
@@ -102,12 +104,12 @@ namespace sophieBeautyApi.Repositorys
 
         public async Task<IEnumerable<booking>> getBookingsByDateRange(DateTime start, DateTime end, booking.status status)
         {
-            
+
             var bookings = await bookingsTable.Find(b => b.appointmentDate >= start && b.appointmentDate < end && b.bookingStatus == status).ToListAsync();
 
             return bookings;
         }
-        
+
 
         public async Task<IEnumerable<booking>> GetExpiredBookingsAsync(DateTime utcNow)
         {
@@ -132,6 +134,6 @@ namespace sophieBeautyApi.Repositorys
 
             return oldExpiredBookings;
         }
-        
+
     }
 }
