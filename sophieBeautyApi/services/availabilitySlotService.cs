@@ -65,7 +65,7 @@ namespace sophieBeautyApi.services
 
             foreach (availablilitySlot slot in slotsOnDate)
             {
-                if (bookingTime >= slot.startTime && bookingEnd <= slot.endTime)
+                if (bookingTime >= slot.startTime && bookingTime <= slot.endTime)
                 {
                     withinSlot = true;
                     break;
@@ -124,7 +124,7 @@ namespace sophieBeautyApi.services
             // check all availability slots
             foreach (availablilitySlot slot in slots)
             {
-                for (TimeSpan i = slot.startTime; i + TimeSpan.FromMinutes(request.bookingDuration) <= slot.endTime; i = i.Add(TimeSpan.FromHours(0.5)))
+                for (TimeSpan i = slot.startTime; i <= slot.endTime; i = i.Add(TimeSpan.FromHours(0.5)))
                 {
                     bool slotTaken = bookingsOnDate.Any(b =>
                     {
