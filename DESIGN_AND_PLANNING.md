@@ -133,7 +133,7 @@ Recommendation:
 - CORS policy currently permits local dev + production frontend domains
 
 ## 9. Current Gaps / Technical Debt Observed
-1. **Test project reference mismatch**: test project references `../SophieBeautyApi/SophieBeautyApi.csproj` while project path is lowercase (`sophieBeautyApi`) causing test failures in this workspace.
+1. **Test project reference mismatch**: test project currently references `../SophieBeautyApi/SophieBeautyApi.csproj`, but the actual API project file is `../sophieBeautyApi/sophieBeautyApi.csproj`, causing test failures in this workspace.
 2. **Naming consistency**: class/type naming is inconsistent (lowercase class names etc.), reducing maintainability.
 3. **Webhook hardening opportunity**: webhook parsing exists, but endpoint should be reviewed for signature verification strategy and stricter failure handling.
 4. **API consistency opportunities**: route naming and casing can be standardized across controllers.
@@ -167,4 +167,3 @@ To fully ground this as a strict **two-repo** design document, the frontend repo
 - Real page/component map
 - Actual API client layer and auth/token storage strategy
 - Build/deploy pipeline details for frontend
-
