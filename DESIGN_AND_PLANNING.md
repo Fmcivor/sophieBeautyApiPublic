@@ -3,6 +3,7 @@
 ## 1. Scope
 This document explains the Sophie Beauty system as a full product, using:
 - **Backend repository:** `Fmcivor/sophieBeautyApiPublic` (analyzed directly)
+- **Backend API project folder in this repo:** `sophieBeautyApi`
 - **Frontend repository:** Sophie Beauty frontend (not present in this workspace; frontend details below are based on backend integration points and should be validated against frontend code)
 
 ## 2. Product Overview
@@ -33,7 +34,7 @@ Sophie Beauty is an appointment booking platform with:
 
 ## 4. Backend Codebase Design (`sophieBeautyApiPublic`)
 
-## 4.1 Core Modules
+### 4.1 Core Modules
 - **Booking**
   - Booking creation (customer/admin)
   - Time-slot conflict validation
