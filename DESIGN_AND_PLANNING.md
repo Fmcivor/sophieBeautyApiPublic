@@ -138,7 +138,7 @@ Important booking states:
 The frontend should be structured around these API contracts:
 - **Public pages**
   - Treatment browsing
-  - Availability-time lookup endpoint integration (current API route: `/availablilitySlot/availableTimes`)
+  - Availability-time lookup endpoint integration
   - Booking creation and payment completion UX
 - **Admin pages**
   - Auth (login, JWT storage/refresh strategy)
