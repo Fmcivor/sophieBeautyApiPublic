@@ -97,6 +97,43 @@ Important booking states:
 3. Expired pending/retryable bookings are marked `Expired`
 4. Old expired bookings are deleted after retention window
 
+### 5.4 Explicit Business Rules (Current Implementation)
+
+#### Booking Rules
+- A booking request must include customer name, email, appointment date/time, treatment IDs, and payment method choice.
+- Customer name is limited to alphabetic words; email and phone number formats are validated.
+- Booking price and duration are derived from selected treatments in the backend (not trusted from client input).
+- Combined treatment duration is rounded **up** to the next 30-minute boundary.
+- Public booking starts in `DepositPending` unless the calculated total cost is below £2, in which case it is immediately `Confirmed`.
+- Admin-created booking is created as `Confirmed`.
+
+#### Time-Slot and Availability Rules
+- Appointment validity is checked against configured availability slots for that date.
+- Slot matching uses UK local time conversion for business-hour checks.
+- Booking must fit into an availability window and must not overlap another non-expired booking.
+- Availability-time responses are generated in 30-minute increments and exclude overlapping times.
+- Overlapping availability-slot definitions for the same date are rejected.
+
+#### Payment Rules
+- Deposit is calculated as 25% of booking total (rounded) and charged in pence through Stripe PaymentIntent.
+- Stripe metadata includes booking ID and customer name for reconciliation.
+- If Stripe intent creation fails after reservation, the reservation is rolled back (booking removed).
+- Webhook `payment_intent.succeeded` confirms the booking and triggers confirmation email.
+- Webhook `payment_intent.payment_failed` marks booking retryable only for retryable failure types and only when enough time remains before expiry.
+- Webhook `payment_intent.requires_action` sets status to `RequiresAction` and extends a short retry window.
+
+#### Expiration Rules
+- New bookings are assigned a short expiry window for deposit completion.
+- Deposit-pending/retryable/requires-action bookings become `Expired` when expiry time passes.
+- Business logic intentionally subtracts a small buffer when returning expiry time to client-facing flows.
+- A background worker enforces expiry transitions every minute.
+
+#### Deletion and Retention Rules
+- Manual booking deletion returns success only when the booking exists and delete operation succeeds.
+- Manual booking deletion sends a cancellation email to the customer.
+- Expired bookings are retained briefly, then auto-deleted after the retention threshold (currently two days).
+- Availability slots can be deleted individually or fully cleared via admin flow.
+
 ## 6. Frontend Integration Contract (to validate in frontend repo)
 The frontend should be structured around these API contracts:
 - **Public pages**
