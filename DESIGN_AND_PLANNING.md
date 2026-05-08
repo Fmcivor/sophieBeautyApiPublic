@@ -105,15 +105,17 @@ Important booking states:
 - Customer name is limited to alphabetic words; email and phone number formats are validated.
 - Booking price and duration are derived from selected treatments in the backend (not trusted from client input).
 - Combined treatment duration is rounded **up** to the next 30-minute boundary.
+- Booking end time is computed as `appointmentDate (UK local time) + duration`.
 - Public booking starts in `DepositPending` unless the calculated total cost is below £2, in which case it is immediately `Confirmed`.
 - Admin-created booking is created as `Confirmed`.
 
 #### Time-Slot and Availability Rules
 - Appointment validity is checked against configured availability slots for that date.
 - Slot matching uses UK local time conversion for business-hour checks.
-- Booking must fit into an availability window and must not overlap another non-expired booking.
+- Booking start must fall within an availability slot, and booking must not overlap another non-expired booking (`bookingStart < existingEnd && bookingEnd > existingStart`).
 - Availability-time responses are generated in 30-minute increments and exclude overlapping times.
 - Overlapping availability-slot definitions for the same date are rejected.
+- `availableTimes` uses requested `bookingDuration` to evaluate conflicts; consumer should pass the full rounded service duration.
 
 #### Payment Rules
 - Deposit is calculated as 25% of booking total (rounded) and charged in pence through Stripe PaymentIntent.
@@ -205,3 +207,155 @@ To fully ground this as a strict **two-repo** design document, the frontend repo
 - Real page/component map
 - Actual API client layer and auth/token storage strategy
 - Build/deploy pipeline details for frontend
+
+## 12. Booking End-Time and Validation Details (Implementation-Level)
+
+### 12.1 End-Time Calculation
+- End time is not persisted as its own field; it is derived from:
+  - `start = booking.appointmentDate`
+  - `duration = booking.duration` (minutes, rounded up to 30-minute boundary)
+  - `end = start + duration`
+- Overlap and available-time checks convert booking times to UK timezone (`GMT Standard Time`) before comparing time-of-day windows.
+
+### 12.2 Validation Paths
+- **Model validation (`[ApiController]` + DataAnnotations)**:
+  - `newBookingDTO.customerName` regex: letters and spaces only.
+  - `newBookingDTO.email` regex: email format required.
+  - `newBookingDTO.phoneNumber` regex (if supplied): UK-style `0` + 10 digits.
+  - required fields enforced by `[Required]`.
+- **Service validation (booking creation)**:
+  - Treatment IDs are resolved server-side; total cost and duration are recalculated in backend.
+  - Duration is normalized to 30-minute increments.
+  - Slot validation checks:
+    - there is a slot for that date/time,
+    - start time is inside a configured slot,
+    - computed booking window does not overlap existing non-expired bookings.
+- **Controller-level response mapping**:
+  - invalid model -> `400`
+  - slot conflict -> `400` with `TAKEN`
+  - persistence/internal failure -> `500`
+
+### 12.3 Expiry/Retry Validation
+- New deposit bookings default to short reservation expiry.
+- Client-facing expiry endpoints subtract 25 seconds as a display buffer.
+- Retry is allowed only when booking is not confirmed/expired and expiry has not passed.
+- Stripe failed payments become:
+  - `FailedRetryable` for retryable declines with enough remaining time (>= 60 seconds),
+  - otherwise `Expired`.
+
+## 13. Models and DTO Field Reference
+
+### 13.1 `booking` (collection: `bookings`)
+| Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|
+| `Id` | `string?` | No | Mongo ObjectId representation | Primary key |
+| `customerName` | `string` | Yes | Regex: letters/spaces | Customer full name |
+| `email` | `string` | Yes | Email regex | Contact and Stripe receipt email |
+| `phoneNumber` | `string?` | No | Regex: `^0\\d{10}$` when provided | Optional contact |
+| `appointmentDate` | `DateTime` | Yes | Required | Stored UTC in DB; often converted to UK local for responses |
+| `treatmentNames` | `List<string>` | Yes | Required | Resolved from treatment IDs at creation |
+| `duration` | `int` | Yes | Required | Minutes; rounded up to next 30-minute block |
+| `cost` | `int` | Yes | Required | Total treatment cost (GBP units) |
+| `payByCard` | `bool` | Yes | Required | Booking payment preference |
+| `paid` | `bool` | Yes | Required | Set true when pay-by-card flow is used |
+| `bookingStatus` | `booking.status` | Yes | Required | Lifecycle state |
+| `stripeId` | `string?` | No | None | Optional legacy/external stripe reference field |
+| `reminderSent` | `bool` | Yes | Required | Admin reminder tracking |
+| `remainingPayment` | `int` | Yes | Required | Initialized as `cost - round(cost*0.25)` |
+| `expiryDate` | `DateTime` | Yes | Required | Defaults to now + 5m25s; used for reservation expiry |
+| `stripePaymentId` | `string?` | No | None | Stripe PaymentIntent ID |
+
+`booking.status` enum values:
+- `Confirmed`, `Completed`, `DepositPending`, `Expired`, `RequiresAction`, `FailedRetryable`, `Processing`
+
+### 13.2 `newBookingDTO`
+| Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|
+| `customerName` | `string` | Yes | Name regex | Booking requester |
+| `appointmentDate` | `DateTime` | Yes | Required | Requested start time |
+| `treatmentIds` | `List<string>` | Yes | Required, ObjectId representation | Used to calculate cost/duration |
+| `email` | `string` | Yes | Email regex | Customer email |
+| `payByCard` | `bool` | Yes | Required | Drives paid/deposit path |
+| `phoneNumber` | `string?` | No | UK phone regex when provided | Optional |
+
+### 13.3 `availablilitySlot` (collection: `availabilitySlots`)
+| Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|
+| `Id` | `string?` | No | Mongo ObjectId representation | Primary key |
+| `date` | `string` | Yes | Expected `yyyy-MM-dd` in service parsing | Slot day |
+| `startTime` | `TimeSpan` | Yes | Required | Slot start (local business time) |
+| `endTime` | `TimeSpan` | Yes | Required | Slot end (local business time) |
+
+### 13.4 `availableTimesRequest`
+| Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|
+| `date` | `DateTime` | Yes | Required | Date queried for availability |
+| `bookingDuration` | `int` | Yes | Required | Duration (minutes) used for overlap checks |
+
+### 13.5 `treatment` (collection: `services`)
+| Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|
+| `Id` | `string?` | No | Mongo ObjectId representation | Primary key |
+| `name` | `string` | Yes | Required | Treatment name |
+| `price` | `int` | Yes | Required | GBP units |
+| `duration` | `int` | Yes | Required | Minutes |
+| `type` | `string` | Yes | Required | Category/type label |
+| `description` | `string` | Yes | Min 20 / Max 150 chars | Public-facing description |
+
+### 13.6 `category` (collection: `categories`)
+| Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|
+| `Id` | `string?` | No | Mongo ObjectId representation | Primary key |
+| `name` | `string` | Yes | Required | Category label |
+
+### 13.7 `admin` and `adminDTO` (collection: `admins`)
+| Model | Field | Type | Required | Validation/Rule | Notes |
+|---|---|---|---|---|---|
+| `admin` | `Id` | `string?` | No | Mongo ObjectId representation | Primary key |
+| `admin` | `username` | `string` | Yes | Required | Login identifier |
+| `admin` | `password` | `string` | Yes | Required | Stored hashed password |
+| `admin` | `salt` | `byte[]` | Yes | Required | Password hashing salt |
+| `adminDTO` | `username` | `string` | Yes | Required | Login input |
+| `adminDTO` | `password` | `string` | Yes | Required | Login input |
+
+### 13.8 `BookingResult`
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `Booking` | `booking?` | No | Populated on success |
+| `Error` | `string?` | No | Populated on failure |
+| `IsSuccess` | `bool` | Yes | Success/failure discriminator |
+
+## 14. Endpoint Reference Table
+
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| GET | `/booking/Allbookings` | Yes | Returns all bookings (admin view). |
+| POST | `/booking/Create` | No | Creates a customer booking, validates slot, may create Stripe intent, returns booking + optional `clientSecret`. |
+| POST | `/booking/Create-Admin` | Yes | Creates an admin booking (confirmed path). |
+| PUT | `/booking/Update` | Yes | Updates an existing booking object. |
+| DELETE | `/booking/Delete/{id}` | Yes | Deletes booking by id and sends cancellation email. |
+| POST | `/booking/todaysAppts` | Yes | Returns appointments for provided day. |
+| POST | `/booking/upcomingAppts` | Yes | Returns upcoming appointments from provided day. |
+| POST | `/booking/lastWeeksRevenue` | Yes | Returns previous week revenue (confirmed bookings). |
+| POST | `/booking/lastMonthsRevenue` | Yes | Returns previous month revenue (confirmed bookings). |
+| POST | `/booking/expired` | No | Checks and updates whether a pending booking is expired. |
+| GET | `/booking/{bookingId}/bookingStatus` | No | Returns simplified status (`Confirmed`, `Expired`, `Pending`). |
+| GET | `/booking/{bookingId}/canRetryPayment` | No | Indicates whether payment retry is currently allowed. |
+| PUT | `/booking/{bookingId}/markExpired` | No | Triggers expired-booking processing pass. |
+| GET | `/booking/{bookingId}/expiryTime` | No | Returns booking expiry time with 25-second display buffer. |
+| GET | `/availablilitySlot` | No | Returns all availability slots. |
+| POST | `/availablilitySlot/create` | Yes | Creates availability slot; rejects overlap for same date. |
+| DELETE | `/availablilitySlot` | Yes | Deletes a specific availability slot from request body. |
+| DELETE | `/availablilitySlot/deleteAll` | Yes | Deletes all availability slots (dev/admin utility). |
+| POST | `/availablilitySlot/availableTimes` | No | Returns free start times for `date` + `bookingDuration`. |
+| GET | `/treatment/AllTreatments` | No | Lists all treatments. |
+| POST | `/treatment/Create` | Yes | Creates treatment. |
+| PUT | `/treatment/Update` | Yes | Updates treatment. |
+| DELETE | `/treatment/Delete/{id}` | Yes | Deletes treatment by id. |
+| GET | `/category` | No | Lists all categories. |
+| POST | `/category` | No | Creates category; returns conflict if duplicate. |
+| DELETE | `/category` | No | Deletes category from request body. |
+| POST | `/admin/login` | No | Authenticates admin and returns JWT. |
+| GET | `/admin/verify` | Yes | Verifies JWT validity. |
+| POST | `/admin/remindBookings` | Yes | Sends reminders for relevant bookings. |
+| POST | `/api/paymentWebHook` | No (Stripe webhook) | Processes Stripe payment events and updates booking status. |
