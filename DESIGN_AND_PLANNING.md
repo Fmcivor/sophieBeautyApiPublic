@@ -278,7 +278,7 @@ To fully ground this as a strict **two-repo** design document, the frontend repo
 | `payByCard` | `bool` | Yes | Required | Drives paid/deposit path |
 | `phoneNumber` | `string?` | No | UK phone regex when provided | Optional |
 
-### 13.3 `availablilitySlot` (collection: `availabilitySlots`)
+### 13.3 `availabilitySlot` (code class: `availablilitySlot`, collection: `availabilitySlots`)
 | Field | Type | Required | Validation/Rule | Notes |
 |---|---|---|---|---|
 | `Id` | `string?` | No | Mongo ObjectId representation | Primary key |
@@ -327,6 +327,8 @@ To fully ground this as a strict **two-repo** design document, the frontend repo
 
 ## 14. Endpoint Reference Table
 
+> Note: availability routes are currently exposed under legacy controller spelling `/availablilitySlot`.
+
 | Method | Route | Auth | Description |
 |---|---|---|---|
 | GET | `/booking/Allbookings` | Yes | Returns all bookings (admin view). |
@@ -353,8 +355,8 @@ To fully ground this as a strict **two-repo** design document, the frontend repo
 | PUT | `/treatment/Update` | Yes | Updates treatment. |
 | DELETE | `/treatment/Delete/{id}` | Yes | Deletes treatment by id. |
 | GET | `/category` | No | Lists all categories. |
-| POST | `/category` | No | Creates category; returns conflict if duplicate. |
-| DELETE | `/category` | No | Deletes category from request body. |
+| POST | `/category` | No (current implementation; recommended admin-only) | Creates category; returns conflict if duplicate. |
+| DELETE | `/category` | No (current implementation; recommended admin-only) | Deletes category from request body. |
 | POST | `/admin/login` | No | Authenticates admin and returns JWT. |
 | GET | `/admin/verify` | Yes | Verifies JWT validity. |
 | POST | `/admin/remindBookings` | Yes | Sends reminders for relevant bookings. |
