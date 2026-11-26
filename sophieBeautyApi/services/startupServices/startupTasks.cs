@@ -1,50 +1,48 @@
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services.startupServices
 {
-
-    public class StartupTask : IHostedService
-{
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<StartupTask> _logger;
-
-    public StartupTask(
-        IServiceScopeFactory scopeFactory,
-        ILogger<StartupTask> logger)
+    public class StartupTask : BackgroundService
     {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<StartupTask> _logger;
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogWarning("STARTUP TASK ENTERED");
-        try
+        public StartupTask(
+            IServiceScopeFactory scopeFactory,
+            ILogger<StartupTask> logger)
         {
-            using var scope = _scopeFactory.CreateScope();
-
-            var bookingService = scope.ServiceProvider
-                .GetRequiredService<IBookingService>();
-
-            var availabilityService = scope.ServiceProvider
-                .GetRequiredService<IAvailabilitySlotService>();
-
-            await bookingService.deleteYearOldBookingsAsync();
-            await availabilityService.deleteMonthOldAvailabilitySlotsAsync();
-
-            _logger.LogInformation("Startup task completed");
+            _scopeFactory = scopeFactory;
+            _logger = logger;
         }
-        catch (Exception ex)
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogError(ex, "Startup task failed");
+            _logger.LogWarning("STARTUP TASK ENTERED");
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+
+                var bookingService = scope.ServiceProvider
+                    .GetRequiredService<IBookingService>();
+
+                var availabilityService = scope.ServiceProvider
+                    .GetRequiredService<IAvailabilitySlotService>();
+
+                await bookingService.deleteYearOldBookingsAsync();
+
+                await availabilityService.deleteMonthOldAvailabilitySlotsAsync();
+
+                _logger.LogInformation("Startup task completed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Startup task failed");
+            }
         }
     }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
-}
-
 }
