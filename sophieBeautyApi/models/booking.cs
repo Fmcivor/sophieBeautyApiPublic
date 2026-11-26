@@ -57,7 +57,7 @@ namespace sophieBeautyApi.Models
 
         //Stripe fields
         [Required]
-        public DateTime expiryDate { get; set; } = DateTime.UtcNow.AddMinutes(5).AddSeconds(25);
+        public DateTime expiryDate { get; set; } = DateTime.UtcNow.AddMinutes(5).AddSeconds(60);
         
 
         public String? stripePaymentId { get; set; }

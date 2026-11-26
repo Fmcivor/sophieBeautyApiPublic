@@ -6,6 +6,8 @@ namespace sophieBeautyApi.ServiceInterfaces
     {
         Task<IEnumerable<booking>> getAll();
 
+        Task<IEnumerable<booking>> getAllConfirmedBookings();
+
         Task<BookingResult> create(newBookingDTO newBooking);
 
         Task<booking?> getById(string id);

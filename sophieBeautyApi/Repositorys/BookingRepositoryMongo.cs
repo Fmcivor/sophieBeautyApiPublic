@@ -22,6 +22,12 @@ namespace sophieBeautyApi.Repositorys
             return bookings;
         }
 
+        public async Task<IEnumerable<booking>> GetAllConfirmedBookingsAsync()
+        {
+            var bookings = await bookingsTable.Find(b => b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            return bookings;
+        }
+
         public async Task<booking> CreateAsync(booking newBooking)
         {
             await bookingsTable.InsertOneAsync(newBooking);

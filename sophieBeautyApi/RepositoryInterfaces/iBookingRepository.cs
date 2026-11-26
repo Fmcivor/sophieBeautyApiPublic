@@ -5,6 +5,7 @@ namespace sophieBeautyApi.RepositoryInterfaces
     public interface IBookingRepository
     {
         Task<IEnumerable<booking>> GetAllAsync();
+        Task<IEnumerable<booking>> GetAllConfirmedBookingsAsync();
         Task<booking> CreateAsync(booking newBooking);
         Task<booking?> GetByIdAsync(string id);
         Task<bool> UpdateAsync(booking updatedBooking);

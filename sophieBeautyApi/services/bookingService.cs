@@ -37,6 +37,19 @@ namespace sophieBeautyApi.services
             return bookings;
         }
 
+        public async Task<IEnumerable<booking>> getAllConfirmedBookings()
+        {
+            var bookings = await _bookingRepository.GetAllConfirmedBookingsAsync();
+
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            foreach (var b in bookings)
+            {
+                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
+            }
+
+            return bookings;
+        }
+
         public async Task<BookingResult> create(newBookingDTO newBooking)
         {
             var treatments = await _treatmentService.getListByIds(newBooking.treatmentIds);
@@ -186,6 +199,11 @@ namespace sophieBeautyApi.services
             if (booking == null)
             {
                 return new BookingResult("NOT_FOUND");
+            }
+
+            if (booking.appointmentDate < DateTime.UtcNow && booking.bookingStatus == booking.status.Confirmed)
+            {
+                return new BookingResult("CANNOT_DELETE_CONFIRMED_BOOKING");
             }
 
             var succeeded = await _bookingRepository.DeleteAsync(id);
