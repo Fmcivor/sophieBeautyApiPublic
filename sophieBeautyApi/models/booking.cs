@@ -21,6 +21,10 @@ namespace sophieBeautyApi.Models
         [RegularExpression(@"^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$",ErrorMessage ="Email not of valid format.")]
         public string email { get; set; }
 
+
+        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
+        public string? phoneNumber { get; set; }
+
         [Required]
         public DateTime appointmentDate { get; set; }
 
@@ -47,15 +51,29 @@ namespace sophieBeautyApi.Models
 
         [Required]
         public bool reminderSent { get; set; }
+        
+        [Required]
+        public int remainingPayment { get; set; }
 
-        [RegularExpression(@"^0\d{10}$", ErrorMessage = "Phone number must be 11 digits long and start with 0.")]
-        public string? phoneNumber { get; set; }
+        //Stripe fields
+        [Required]
+        public DateTime expiryDate { get; set; } = DateTime.UtcNow.AddMinutes(5).AddSeconds(25);
+        
+
+        public String? stripePaymentId { get; set; }
 
 
+        
         public enum status
         {
+            
             Confirmed,
-            Completed
+            Completed,
+            DepositPending,
+            Expired,
+            RequiresAction,
+            FailedRetryable,
+            Processing
         }
 
 
@@ -83,7 +101,10 @@ namespace sophieBeautyApi.Models
             this.bookingStatus = bookingStatus;
             this.reminderSent = false;
             this.phoneNumber = phoneNumber;
+            this.remainingPayment = cost - (int) Math.Round(cost * 0.25);
         }
+
+        
 
     }
 }

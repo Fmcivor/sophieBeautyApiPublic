@@ -75,7 +75,7 @@ namespace sophieBeautyApi.Controllers
 
         [Authorize]
         [HttpGet("verify")]
-        public async Task<ActionResult<bool>> verifyJwt()
+        public ActionResult<bool> verifyJwt()
         {
             return Ok(true);
         }

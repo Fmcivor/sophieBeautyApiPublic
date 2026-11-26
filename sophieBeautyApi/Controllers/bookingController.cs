@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using MongoDB.Driver.Search;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.ServiceInterfaces;
 using sophieBeautyApi.services;
 
 namespace sophieBeautyApi.Controllers
@@ -13,18 +14,18 @@ namespace sophieBeautyApi.Controllers
     [Route("[controller]")]
     public class bookingController : ControllerBase
     {
-        private readonly bookingService _bookingService;
-        private readonly treatmentService _treatmentService;
+        private readonly IBookingService _bookingService;
+        private readonly IPaymentService _paymentService;
 
-        private readonly emailService _emailService;
+        private readonly IEmailService _emailService;
 
-        private readonly availablilitySlotService _availablilitySlotService;
 
-        public bookingController(bookingService bookingService, treatmentService treatmentService, availablilitySlotService availablilitySlotService, emailService emailService)
+
+
+        public bookingController(IBookingService bookingService, IPaymentService paymentService, IEmailService emailService)
         {
             this._bookingService = bookingService;
-            this._treatmentService = treatmentService;
-            this._availablilitySlotService = availablilitySlotService;
+            this._paymentService = paymentService;
             this._emailService = emailService;
         }
 
@@ -34,17 +35,6 @@ namespace sophieBeautyApi.Controllers
         public async Task<ActionResult> getAll()
         {
             var bookings = await _bookingService.getAll();
-
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-
-
-            foreach (var b in bookings)
-            {
-                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
-            }
-
-
 
             return Ok(bookings);
         }
@@ -57,96 +47,98 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var treatments = await _treatmentService.getListByIds(newBooking.treatmentIds);
 
-            List<string> treatmentNames = new List<string>();
-            int duration = 0;
-            int price = 0;
+            var result = await _bookingService.create(newBooking);
 
-            foreach (var t in treatments)
+            if (result.IsSuccess == false)
             {
-                treatmentNames.Add(t.name);
-                duration += t.duration;
-                price += t.price;
+                switch (result.Error)
+                {
+                    case "TAKEN":
+                        return BadRequest("TAKEN, Sorry the booking slot has already been taken");
+                    case "NO_SLOT":
+                        return BadRequest("There is no availability slot for the time chosen");
+                    case "SERVER_ERROR":
+                        return StatusCode(500, "An error occurred while creating the booking");
+                    default:
+                        return StatusCode(500, "An unexpected error occurred");
+                }
             }
 
-            duration = (int)(Math.Ceiling(duration / 30.0) * 30);
-
-            bool paid = false;
-            if (newBooking.payByCard)
+            if (result.Booking == null)
             {
-                paid = true;
+                return StatusCode(500, "An error occurred when creating the booking");
             }
 
-            booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatmentNames, price,duration, newBooking.payByCard, paid, booking.status.Confirmed, newBooking.phoneNumber);
+            booking createdBooking = result.Booking;
+            //remove 25 seconds from expiray time
 
-            var existingBooking = await _bookingService.bookingOnDate(booking.appointmentDate);
-
-            if (existingBooking != null)
-            {
-                return BadRequest("TAKEN,Sorry the booking slot has already been taken");
-            }
-
-            bool withinAvailableTimeSlot = await _availablilitySlotService.bookingWithinAvailabilitySlot(booking.appointmentDate);
-
-            if (!withinAvailableTimeSlot)
-            {
-                return BadRequest("There is no availability slot for the time chosen");
-            }
-
-            booking = await _bookingService.create(booking);
-
-            // Null check
-            if (booking == null)
-            {
-                return StatusCode(500, "An error occurred while creating the booking.");
-            }
-
+            // determine if booking requires deposit
             var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
 
-            booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, ukZone);
+            if (createdBooking.bookingStatus == booking.status.Confirmed)
+            {
+                
+                createdBooking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(createdBooking.appointmentDate, ukZone);
 
-            await _emailService.Send(booking);
+                await _emailService.Send(createdBooking);
+                return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = (string?)null });
+            }
 
-            return CreatedAtAction(nameof(create), booking);
+
+            string? clientSecret = await _paymentService.CreatePaymentIntent(createdBooking); 
+            
+            
+            if (clientSecret == null)
+            {
+                return StatusCode(500, "An error occurred generating a Stripe payment intent");
+            }
+
+            createdBooking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
+            createdBooking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(createdBooking.appointmentDate, ukZone);
+
+            // return CreatedAtAction(nameof(create), result.Booking.Id);
+            return CreatedAtAction(nameof(create), new { booking = createdBooking, clientSecret = clientSecret});
         }
 
 
-        // [Authorize]
-        // [HttpPost("specialCreate")]
-        // public async Task<ActionResult> specialCreate([FromBody] newBookingDTO newBooking)
-        // {
-        //     if (!ModelState.IsValid)
-        //     {
-        //         return BadRequest(ModelState);
-        //     }
+        [Authorize]
+        [HttpPost("Create-Admin")]
+        public async Task<ActionResult> createAdmin([FromBody] newBookingDTO newBooking)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //     var treatment = await _treatmentService.getById(newBooking.treatmentId);
 
-        //     bool paid = false;
-        //     if (newBooking.payByCard)
-        //     {
-        //         paid = true;
-        //     }
+            var result = await _bookingService.createBookingAdmin(newBooking);
 
-        //     booking booking = new booking(newBooking.customerName, newBooking.appointmentDate, newBooking.email, treatment.name, (int)treatment.price, treatment.duration, newBooking.payByCard, paid, booking.status.Confirmed);
+            if (result.IsSuccess == false)
+            {
+                switch (result.Error)
+                {
+                    case "TAKEN":
+                        return BadRequest("TAKEN, Sorry the booking slot has already been taken");
+                    case "NO_SLOT":
+                        return BadRequest("There is no availability slot for the time chosen");
+                    case "SERVER_ERROR":
+                        return StatusCode(500, "An error occurred while creating the booking");
+                    default:
+                        return StatusCode(500, "An unexpected error occurred");
+                }
+            }
 
-        //     var existingBooking = await _bookingService.bookingOnDate(booking.appointmentDate);
+            if (result.Booking == null)
+            {
+                return StatusCode(500, "An error occurred when creating the booking");
+            }
 
-        //     if (existingBooking != null)
-        //     {
-        //         return BadRequest("TAKEN,Sorry the booking slot has already been taken");
-        //     }
 
-        //     booking = await _bookingService.create(booking);
-
-        //     var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-        //     booking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(booking.appointmentDate, ukZone);
-
-        //     return CreatedAtAction(nameof(create), booking);
-        // }
-
+            
+            // return CreatedAtAction(nameof(create), result.Booking.Id);
+            return CreatedAtAction(nameof(create), result.Booking);
+        }
 
 
         [Authorize]
@@ -157,11 +149,6 @@ namespace sophieBeautyApi.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
-            }
-
-            if (updatedbooking.Id == null)
-            {
-                return NotFound();
             }
 
             bool succeeded = await _bookingService.update(updatedbooking);
@@ -183,15 +170,19 @@ namespace sophieBeautyApi.Controllers
                 return BadRequest("Id is required.");
             }
 
-            var cancelledBooking = await _bookingService.getById(id);
-            bool succeeded = await _bookingService.delete(id);
+            var result = await _bookingService.delete(id);
 
-            if (!succeeded)
+            if (result.IsSuccess == false)
             {
-                return NotFound();
+                switch (result.Error)
+                {
+                    case "NOT_FOUND":
+                        return NotFound("Booking not found");
+                    default:
+                        return StatusCode(500, "An unexpected error occurred");
+                }
             }
 
-            await _emailService.sendCancellation(cancelledBooking);
             return NoContent();
         }
 
@@ -214,17 +205,11 @@ namespace sophieBeautyApi.Controllers
         {
             var bookingsToday = await _bookingService.getTodaysBooking(today);
 
-            if (bookingsToday == null)
+            if (bookingsToday.Any() == false)
             {
                 return NotFound();
             }
 
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            foreach (booking b in bookingsToday)
-            {
-                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
-            }
 
             return Ok(bookingsToday);
         }
@@ -236,16 +221,9 @@ namespace sophieBeautyApi.Controllers
         {
             var upcomingBookings = await _bookingService.getUpcomingBookings(today);
 
-            if (upcomingBookings == null)
+            if (upcomingBookings.Any() == false)
             {
                 return NotFound();
-            }
-
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-
-            foreach (booking b in upcomingBookings)
-            {
-                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
             }
 
             return Ok(upcomingBookings);
@@ -271,6 +249,95 @@ namespace sophieBeautyApi.Controllers
         }
 
 
+
+        [HttpPost("expired")]
+        public async Task<ActionResult<bool>> isExpired([FromBody] String bookingId)
+        {
+
+
+            var result = await _bookingService.isBookingExpired(bookingId);
+
+            switch (result.Error)
+            {
+                case "NOT_FOUND":
+                    return NotFound("Booking not found");
+                case "EXPIRED":
+                    return Ok(true);
+                default:
+                    return Ok(false);
+            }
+        }
+
+
+        [HttpGet("{bookingId}/bookingStatus")]
+        public async Task<ActionResult> bookingStatus(string bookingId)
+        {
+            var booking = await _bookingService.getById(bookingId);
+
+            if (booking == null)
+            {
+                return NotFound("Booking not found");
+            }
+
+            if (booking.bookingStatus == booking.status.Confirmed)
+            {
+                return Ok(new { status = "Confirmed" });
+            }
+            else if (booking.expiryDate < DateTime.UtcNow)
+            {
+                await _bookingService.MarkExpiredBookingsAsync();
+                return Ok(new { status = "Expired" });
+            }
+            return Ok(new { status = "Pending" });
+
+
+        }
+
+
+        [HttpGet("{bookingId}/canRetryPayment")]
+        public async Task<ActionResult<bool>> canRetryPayment(string bookingId)
+        {
+            var b = await _bookingService.getById(bookingId);
+
+            if (b == null)
+            {
+                return NotFound("Booking not found");
+            }
+
+            bool canRetry = false;
+
+            if (b.expiryDate > DateTime.UtcNow && b.bookingStatus != booking.status.Confirmed && b.bookingStatus != booking.status.Expired)
+            {
+                canRetry = true;
+            }
+            
+
+
+
+            return Ok(canRetry);
+    }
+
+
+        [HttpPut("{bookingId}/markExpired")]
+        public async Task<ActionResult> markExpired(string bookingId)
+        {
+            await _bookingService.MarkExpiredBookingsAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("{bookingId}/expiryTime")]
+        public async Task<ActionResult> getExpiryTime(String bookingId){
+
+            var expiryTime =await _bookingService.getExpiryTime(bookingId);
+            if(expiryTime == null){
+                return NotFound("Booking not found");
+            }
+
+            expiryTime = expiryTime.Value.AddSeconds(-25);
+            return Ok(expiryTime);
+            
+        }
 
     }
 }

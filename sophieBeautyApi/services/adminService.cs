@@ -7,25 +7,24 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
     public class adminService
     {
 
-        private readonly IMongoCollection<admin> _adminTable;
-        private readonly MongoClient _mongoClient;
+        private readonly IAdminRepository _adminRepository;
 
-        private readonly bookingService _bookingService;
-        private readonly emailService _emailService;
+        private readonly IBookingService _bookingService;
+        private readonly IEmailService _emailService;
 
-        public adminService(MongoClient mongoClient, emailService emailService, bookingService bookingService)
+        public adminService(IAdminRepository adminRepository, IEmailService emailService, IBookingService bookingService)
         {
-            _mongoClient = mongoClient;
-            var database = _mongoClient.GetDatabase("SophieBeauty");
-            _bookingService = bookingService;
-            _emailService = emailService;
-            _adminTable = database.GetCollection<admin>("admins");
+            this._adminRepository = adminRepository;
+            this._bookingService = bookingService;
+            this._emailService = emailService;
         }
 
         public async Task<admin> register(adminDTO admin)
@@ -39,14 +38,14 @@ namespace sophieBeautyApi.services
             newAdmin.password = hashed;
             newAdmin.salt = salt;
 
-            await _adminTable.InsertOneAsync(newAdmin);
+            await _adminRepository.RegisterAsync(newAdmin);
 
             return newAdmin;
         }
 
-        public async Task<admin> validateLogin(adminDTO loginDto)
+        public async Task<admin?> validateLogin(adminDTO loginDto)
         {
-            var account = await _adminTable.Find(a => a.username == loginDto.username).FirstOrDefaultAsync();
+            var account = await _adminRepository.findAdminByUsername(loginDto.username);
 
             if (account == null)
             {

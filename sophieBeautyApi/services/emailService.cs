@@ -9,10 +9,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
-    public class emailService
+    public class emailService : IEmailService
     {
 
         private readonly IConfiguration _config;
@@ -45,7 +46,7 @@ namespace sophieBeautyApi.services
                 htmlBody = htmlBody.Replace("{{customer_name}}", newBooking.customerName);
                 htmlBody = htmlBody.Replace("{{service_name}}", treatmentHtml);
                 htmlBody = htmlBody.Replace("{{start_datetime}}", formattedDate);
-                htmlBody = htmlBody.Replace("{{price}}", "£" + newBooking.cost.ToString());
+                htmlBody = htmlBody.Replace("{{price}}", "£" + newBooking.remainingPayment.ToString());
                 htmlBody = htmlBody.Replace("{{duration}}", newBooking.duration.ToString() + " Minutes");
                 htmlBody = htmlBody.Replace("{{payment_method}}", "Cash");
                 htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");
@@ -103,7 +104,7 @@ namespace sophieBeautyApi.services
                 htmlBody = htmlBody.Replace("{{customer_name}}", cancelledBooking.customerName);
                 htmlBody = htmlBody.Replace("{{service_name}}", treatmentHtml);
                 htmlBody = htmlBody.Replace("{{start_datetime}}", formattedDate);
-                htmlBody = htmlBody.Replace("{{price}}", "£" + cancelledBooking.cost.ToString());
+                htmlBody = htmlBody.Replace("{{price}}", "£" + cancelledBooking.remainingPayment.ToString());
                 htmlBody = htmlBody.Replace("{{duration}}", cancelledBooking.duration.ToString() + " Minutes");
                 htmlBody = htmlBody.Replace("{{payment_method}}", "Cash");
                 htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");
@@ -121,7 +122,7 @@ namespace sophieBeautyApi.services
                     }));
 
 
-                EmailSendOperation emailSendOperation = client.Send(
+                EmailSendOperation emailSendOperation = await client.SendAsync(
                     WaitUntil.Started,
                     emailMessage);
 
@@ -159,7 +160,7 @@ namespace sophieBeautyApi.services
                 htmlBody = htmlBody.Replace("{{customer_name}}", booking.customerName);
                 htmlBody = htmlBody.Replace("{{service_name}}", treatmentHtml);
                 htmlBody = htmlBody.Replace("{{start_datetime}}", formattedDate);
-                htmlBody = htmlBody.Replace("{{price}}", "£" + booking.cost.ToString());
+                htmlBody = htmlBody.Replace("{{price}}", "£" + booking.remainingPayment.ToString());
                 htmlBody = htmlBody.Replace("{{duration}}", booking.duration.ToString() + " Minutes");
                 htmlBody = htmlBody.Replace("{{payment_method}}", "Cash");
                 htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");
@@ -177,7 +178,7 @@ namespace sophieBeautyApi.services
                     }));
 
 
-                EmailSendOperation emailSendOperation = client.Send(
+                EmailSendOperation emailSendOperation = await client.SendAsync(
                     WaitUntil.Started,
                     emailMessage);
 
@@ -213,7 +214,7 @@ namespace sophieBeautyApi.services
                 htmlBody = htmlBody.Replace("{{customer_name}}", newBooking.customerName);
                 htmlBody = htmlBody.Replace("{{service_name}}", treatmentHtml);
                 htmlBody = htmlBody.Replace("{{start_datetime}}", formattedDate);
-                htmlBody = htmlBody.Replace("{{price}}", "£" + newBooking.cost.ToString());
+                htmlBody = htmlBody.Replace("{{price}}", "£" + newBooking.remainingPayment.ToString());
                 htmlBody = htmlBody.Replace("{{duration}}", newBooking.duration.ToString() + " Minutes");
                 htmlBody = htmlBody.Replace("{{payment_method}}", "Cash");
                 htmlBody = htmlBody.Replace("{{contact_url}}", "mailto:" + "info@beautybysophieee.com");
@@ -231,7 +232,7 @@ namespace sophieBeautyApi.services
                     }));
 
 
-                EmailSendOperation emailSendOperation = client.Send(
+                EmailSendOperation emailSendOperation = await client.SendAsync(
                     WaitUntil.Started,
                     emailMessage);
 

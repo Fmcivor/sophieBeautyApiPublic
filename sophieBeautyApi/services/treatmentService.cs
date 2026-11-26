@@ -1,61 +1,58 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using MongoDB.Driver;
 using sophieBeautyApi.Models;
+using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.Repositorys;
+using sophieBeautyApi.ServiceInterfaces;
 
 namespace sophieBeautyApi.services
 {
-    public class treatmentService
+    public class treatmentService: ITreatmentService 
     {
-        private readonly IMongoCollection<treatment> treatmentTable;
-        private readonly MongoClient _mongoClient;
+        
 
-        public treatmentService(MongoClient mongoClient)
+        private readonly ITreatmentRepository _treatmentRepository;
+
+        public treatmentService(ITreatmentRepository treatmentRepo)
         {
-            _mongoClient = mongoClient;
-            var database = _mongoClient.GetDatabase("SophieBeauty");
-            treatmentTable = database.GetCollection<treatment>("services");
+            _treatmentRepository = treatmentRepo;
         }
 
         public async Task<IEnumerable<treatment>> getAll()
         {
-            var treatments = await treatmentTable.Find(t => true).ToListAsync();
+            var treatments = await _treatmentRepository.GetAllAsync();
 
             return treatments;
         }
 
         public async Task<treatment> create(treatment newTreatment)
         {
-            await treatmentTable.InsertOneAsync(newTreatment);
+            await _treatmentRepository.CreateAsync(newTreatment);
 
             return newTreatment;
         }
 
         public async Task<treatment?> getById(string id)
         {
-            var filter = Builders<treatment>.Filter.Eq(t => t.Id, id);
-            return await treatmentTable.Find(filter).FirstOrDefaultAsync();
+            return await _treatmentRepository.GetByIdAsync(id);
         }
 
         public async Task<bool> update(treatment updatedTreatment)
         {
-            var filter = Builders<treatment>.Filter.Eq(t => t.Id, updatedTreatment.Id);
-            var result = await treatmentTable.ReplaceOneAsync(filter, updatedTreatment);
-            return result.MatchedCount > 0;
+            var result = await _treatmentRepository.UpdateAsync(updatedTreatment);
+            return result;
         }
 
         public async Task<bool> delete(string id)
         {
-            var filter = Builders<treatment>.Filter.Eq(t => t.Id, id);
-            var result = await treatmentTable.DeleteOneAsync(filter);
-            return result.DeletedCount > 0;
+            var result = await _treatmentRepository.DeleteAsync(id);
+            return result;
         }
     
         public async Task<IEnumerable<treatment>> getListByIds(List<string> ids)
         {
 
-            var treatments = await treatmentTable.Find(t => ids.Contains(t.Id) == true).ToListAsync();
-
-
+            var treatments = await _treatmentRepository.GetListByIdsAsync(ids);
             return treatments;
         }
     

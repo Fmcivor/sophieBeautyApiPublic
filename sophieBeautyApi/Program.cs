@@ -13,8 +13,13 @@ using sophieBeautyApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
+using sophieBeautyApi.RepositoryInterfaces;
+using sophieBeautyApi.Repositorys;
+using sophieBeautyApi.ServiceInterfaces;
+using Stripe;
+using sophieBeautyApi.services.backgroundServices;
 
-    var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
     // Azure Key Vault
     builder.Configuration.AddAzureKeyVault(
@@ -22,99 +27,124 @@ using Microsoft.Extensions.Configuration;
         new ManagedIdentityCredential("78fdb9b2-214a-4701-b57f-3010da379586")
     );
 
-    // Add services
-    builder.Services.AddControllers();
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+StripeConfiguration.ApiKey = builder.Configuration["StripeSecretKey"]
+    ?? throw new InvalidOperationException("Stripe secret key is not configured.");
 
-    builder.Services.AddSingleton<MongoClient>(sp =>
+// Add services
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddSingleton<MongoClient>(sp =>
+{
+    var connectionString = builder.Configuration["mongoDB-conn"];
+    return new MongoClient(connectionString);
+});
+
+
+// Repositories
+builder.Services.AddScoped<ITreatmentRepository, TreatmentRepositoryMongo>();
+builder.Services.AddScoped<IBookingRepository, BookingRepositoryMongo>();
+builder.Services.AddScoped<IAvailabilitySlotRepository, AvailabilitySlotRepositoryMongo>();
+builder.Services.AddScoped<IAdminRepository, AdminRepositoryMongo>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepositoryMongo>();
+
+builder.Services.AddScoped<ITreatmentService,treatmentService>();
+builder.Services.AddScoped<IBookingService, bookingService>();
+builder.Services.AddScoped<IAvailabilitySlotService, availablilitySlotService>();
+builder.Services.AddScoped<jwtTokenHandler>();
+builder.Services.AddScoped<adminService>();
+builder.Services.AddScoped<ICategoryService,categoryService>();
+builder.Services.AddScoped<IEmailService, emailService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();  
+
+
+// background service
+builder.Services.AddHostedService<BookingExpiryService>();
+
+
+
+
+// JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        var connectionString = builder.Configuration["mongoDB-conn"];
-        return new MongoClient(connectionString);
-    });
-
-    builder.Services.AddScoped<treatmentService>();
-    builder.Services.AddScoped<bookingService>();
-    builder.Services.AddScoped<availablilitySlotService>();
-    builder.Services.AddScoped<jwtTokenHandler>();
-    builder.Services.AddScoped<adminService>();
-    builder.Services.AddScoped<categoryService>();
-    builder.Services.AddScoped<emailService>();
-
-    // JWT Authentication
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            options.TokenValidationParameters = new TokenValidationParameters
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidAudience = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
+            ValidIssuer = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) =>
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidAudience = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
-                ValidIssuer = "https://sophiebeautyapi-c0hwdgf2hdbedfa5.ukwest-01.azurewebsites.net/",
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(builder.Configuration["jwtSecret"]))
-            };
-        });
-
-    // Swagger + JWT
-    builder.Services.AddSwaggerGen(c =>
-    {
-        c.SwaggerDoc("v1", new() { Title = "Your API", Version = "v1" });
-
-        var jwtScheme = new OpenApiSecurityScheme
-        {
-            Scheme = "bearer",
-            BearerFormat = "JWT",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.Http,
-            Description = "Enter JWT Bearer token",
-            Reference = new OpenApiReference
-            {
-                Id = JwtBearerDefaults.AuthenticationScheme,
-                Type = ReferenceType.SecurityScheme
+                var secret = builder.Configuration["jwtSecret"]
+                    ?? throw new InvalidOperationException("JWT secret is not configured.");
+                return new[] { new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)) };
             }
         };
+    });
 
-        c.AddSecurityDefinition(jwtScheme.Reference.Id, jwtScheme);
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+// Swagger + JWT
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Your API", Version = "v1" });
+
+    var jwtScheme = new OpenApiSecurityScheme
+    {
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Description = "Enter JWT Bearer token",
+        Reference = new OpenApiReference
         {
+            Id = JwtBearerDefaults.AuthenticationScheme,
+            Type = ReferenceType.SecurityScheme
+        }
+    };
+
+    c.AddSecurityDefinition(jwtScheme.Reference.Id, jwtScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
             { jwtScheme, Array.Empty<string>() }
-        });
     });
+});
 
-    // CORS
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("LocalAndFrontend", policy =>
-            policy.WithOrigins(
-                    "http://localhost:000",
-                    "http://127.0.0.1:5500",
-                    "http://192.168.1.71:5500",
-                    "https://shapedbysophiee.netlify.app",
-                    "https://www.shapedbysophiee.com" )
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials());
-    });
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalAndFrontend", policy =>
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://127.0.0.1:5500",
+                "http://192.168.1.71:5500",
+                "https://shapedbysophiee.netlify.app",
+                "https://www.shapedbysophiee.com")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
 
-    var app = builder.Build();
+var app = builder.Build();
 
-    // Middleware
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+// Middleware
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
+app.UseSwagger();
+    app.UseSwaggerUI();
 
-    app.UseHttpsRedirection();
-    app.UseRouting();
-    app.UseCors("LocalAndFrontend");
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.MapControllers();
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("LocalAndFrontend");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
-    // Run the app
-    app.Run();
+// Run the app
+app.Run();
