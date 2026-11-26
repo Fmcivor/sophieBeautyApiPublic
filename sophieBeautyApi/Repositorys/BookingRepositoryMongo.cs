@@ -143,7 +143,7 @@ namespace sophieBeautyApi.Repositorys
 
         public async Task<bool> deleteOldBookingsAsync(DateTime cutoffDate)
         {
-            var filter = Builders<booking>.Filter.Lt(b => b.expiryDate, cutoffDate);
+            var filter = Builders<booking>.Filter.Lt(b => b.appointmentDate, cutoffDate);
 
             var result = await bookingsTable.DeleteManyAsync(filter);
 
