@@ -36,5 +36,8 @@ namespace sophieBeautyApi.ServiceInterfaces
         Task<BookingResult> createBookingAdmin(newBookingDTO newBooking);
 
         Task<DateTime?> getExpiryTime(string bookingId);
+
+        Task deleteYearOldBookingsAsync();
+
     }
 }

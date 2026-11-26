@@ -14,11 +14,11 @@ namespace sophieBeautyApi.services
         private readonly ITreatmentService _treatmentService;
         private readonly IEmailService _emailService;
 
-        public bookingService(IBookingRepository bookingRepository, IAvailabilitySlotService availablilitySlotService, ITreatmentService treatmentService,
+        public bookingService(IBookingRepository bookingRepository, IAvailabilitySlotService availabilitySlotService, ITreatmentService treatmentService,
         IEmailService emailService)
         {
             this._bookingRepository = bookingRepository;
-            this._availabilityService = availablilitySlotService;
+            this._availabilityService = availabilitySlotService;
             this._treatmentService = treatmentService;
             this._emailService = emailService;
         }
@@ -86,7 +86,7 @@ namespace sophieBeautyApi.services
 
             if (booking.cost < 2)
             {
-                // expirytime doesnt matter due to status
+                // expirytime doesn't matter due to status
                 booking.bookingStatus = booking.status.Confirmed;
             }
 
@@ -107,10 +107,6 @@ namespace sophieBeautyApi.services
                 return new BookingResult("SERVER_ERROR");
             }
         }
-
-
-
-
 
         public async Task<BookingResult> createBookingAdmin(newBookingDTO newBooking)
         {
@@ -415,30 +411,18 @@ namespace sophieBeautyApi.services
 
             return booking.expiryDate;
         }
+        
 
-        private static booking CreateClientBooking(booking source)
+        public async Task deleteYearOldBookingsAsync()
         {
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            var cutoffDate = DateTime.UtcNow.AddYears(-1);
+            bool result = await _bookingRepository.deleteOldBookingsAsync(cutoffDate);
 
-            return new booking(
-                source.customerName,
-                TimeZoneInfo.ConvertTimeFromUtc(source.appointmentDate, ukZone),
-                source.email,
-                new List<string>(source.treatmentNames),
-                source.cost,
-                source.duration,
-                source.payByCard,
-                source.paid,
-                source.bookingStatus,
-                source.phoneNumber)
+            if (!result)
             {
-                Id = source.Id,
-                reminderSent = source.reminderSent,
-                remainingPayment = source.remainingPayment,
-                expiryDate = source.expiryDate,
-                stripePaymentId = source.stripePaymentId,
-                stripeId = source.stripeId
-            };
+                throw new Exception("Failed to delete year-old bookings.");
+            }
         }
+            
     }
 }

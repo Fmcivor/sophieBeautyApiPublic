@@ -72,5 +72,15 @@ namespace sophieBeautyApi.Repositorys
             await _availabilitySlotTable.DeleteManyAsync(a => true);
             return true;
         }
+
+
+        public async Task<bool> deleteOldAvailabilitySlotsAsync(DateTime cutoffDate)
+        {
+            var filter = Builders<availablilitySlot>.Filter.Lt(a => DateTime.ParseExact(a.date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), cutoffDate);
+
+            var result = await _availabilitySlotTable.DeleteManyAsync(filter);
+
+            return result.IsAcknowledged && result.DeletedCount > 0;
+        }
     }
 }

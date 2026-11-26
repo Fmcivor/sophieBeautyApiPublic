@@ -17,5 +17,7 @@ namespace sophieBeautyApi.ServiceInterfaces
         Task<IEnumerable<availablilitySlot>> getSlotsByDate(DateTime date);
 
         Task<bool> deleteAll();
+
+        Task deleteMonthOldAvailabilitySlotsAsync();
     }
 }

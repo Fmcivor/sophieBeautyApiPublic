@@ -161,10 +161,26 @@ namespace sophieBeautyApi.services
 
 
         //dev only
+        
         public async Task<bool> deleteAll()
         {
             return await _availabilitySlotRepository.DeleteAllAsync();
         }
+
+
+
+        public async Task deleteMonthOldAvailabilitySlotsAsync()
+        {
+            var cutoffDate = DateTime.UtcNow.AddMonths(-1);
+            bool result = await _availabilitySlotRepository.deleteOldAvailabilitySlotsAsync(cutoffDate);
+
+            if (!result)
+            {
+                throw new Exception("Failed to delete month-old availability slots.");
+            }
+        }
+
+
 
     }
 }

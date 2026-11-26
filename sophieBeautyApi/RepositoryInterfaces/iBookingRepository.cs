@@ -20,5 +20,7 @@ namespace sophieBeautyApi.RepositoryInterfaces
         Task<IEnumerable<booking>> GetExpiredBookingsAsync(DateTime utcNow);
 
         Task<IEnumerable<booking>> getOldExpiredBookingsAsync(DateTime cutoffDate);
+
+        Task<bool> deleteOldBookingsAsync(DateTime cutoffDate);
     }
 }

@@ -18,6 +18,7 @@ using sophieBeautyApi.Repositorys;
 using sophieBeautyApi.ServiceInterfaces;
 using Stripe;
 using sophieBeautyApi.services.backgroundServices;
+using sophieBeautyApi.services.startupServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,9 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // background service
 builder.Services.AddHostedService<BookingExpiryService>();
+
+// Startup task
+builder.Services.AddHostedService<StartupTask>();
 
 
 

@@ -141,5 +141,14 @@ namespace sophieBeautyApi.Repositorys
             return oldExpiredBookings;
         }
 
+        public async Task<bool> deleteOldBookingsAsync(DateTime cutoffDate)
+        {
+            var filter = Builders<booking>.Filter.Lt(b => b.expiryDate, cutoffDate);
+
+            var result = await bookingsTable.DeleteManyAsync(filter);
+
+            return result.IsAcknowledged && result.DeletedCount > 0;
+        }
+
     }
 }
