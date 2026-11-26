@@ -19,6 +19,7 @@ namespace sophieBeautyApi.services.startupServices
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        _logger.LogWarning("STARTUP TASK ENTERED");
         try
         {
             using var scope = _scopeFactory.CreateScope();

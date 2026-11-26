@@ -22,6 +22,9 @@ using sophieBeautyApi.services.startupServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+builder.Logging.AddAzureWebAppDiagnostics();
+
     // Azure Key Vault
     builder.Configuration.AddAzureKeyVault(
         new Uri("https://shapedbysophiesecrets.vault.azure.net/"),
@@ -30,6 +33,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 StripeConfiguration.ApiKey = builder.Configuration["StripeSecretKey"]
     ?? throw new InvalidOperationException("Stripe secret key is not configured.");
+
+
 
 // Add services
 builder.Services.AddControllers();
