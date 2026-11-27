@@ -197,18 +197,24 @@ namespace sophieBeautyApi.Controllers
             return NoContent();
         }
 
-        // [HttpPost("availableTimes")]
-        // public async Task<ActionResult<IEnumerable<TimeSpan>>> getAvailableTimes([FromBody] DateTime selectedDate)
-        // {
-        //     var availableTimes = await _bookingService.getAvailableTimes(selectedDate);
+        [Authorize]
+        [HttpGet("canDelete/{id}")]
+        public async Task<ActionResult<bool>> canDelete(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return BadRequest("Id is required.");
+            }
 
-        //     return Ok(availableTimes);
-        // }
+            var result = await _bookingService.userCanDeleteBooking(id);
 
+            if (result == false)
+            {
+                return Ok(false);
+            }
 
-
-
-        //admin data
+            return Ok(true);
+        }
 
         [Authorize]
         [HttpPost("todaysAppts")]

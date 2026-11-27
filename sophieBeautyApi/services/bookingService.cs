@@ -187,6 +187,24 @@ namespace sophieBeautyApi.services
             return result;
         }
 
+
+        public async Task<bool> userCanDeleteBooking(string bookingId)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+
+            if (booking == null)
+            {
+                return false;
+            }
+
+            if (booking.appointmentDate < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public async Task<BookingResult> delete(string id)
         {
 

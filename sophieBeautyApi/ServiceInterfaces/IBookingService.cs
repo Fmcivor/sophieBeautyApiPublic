@@ -16,6 +16,8 @@ namespace sophieBeautyApi.ServiceInterfaces
 
         Task<bool> markReminderSent(booking updatedBooking);
 
+        Task<bool> userCanDeleteBooking(string bookingId);
+
         Task<BookingResult> delete(string id);
 
         Task<IEnumerable<booking>> getTodaysBooking(DateTime date);
