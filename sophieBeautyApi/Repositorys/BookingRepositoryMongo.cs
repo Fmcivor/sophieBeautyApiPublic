@@ -147,6 +147,10 @@ namespace sophieBeautyApi.Repositorys
 
             var result = await bookingsTable.DeleteManyAsync(filter);
 
+
+            Console.WriteLine($"Bookings deleted: {result.DeletedCount}");
+
+
             return result.IsAcknowledged;
         }
 
