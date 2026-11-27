@@ -14,11 +14,11 @@ namespace sophieBeautyApi.services
         private readonly ITreatmentService _treatmentService;
         private readonly IEmailService _emailService;
 
-        public bookingService(IBookingRepository bookingRepository, IAvailabilitySlotService availablilitySlotService, ITreatmentService treatmentService,
+        public bookingService(IBookingRepository bookingRepository, IAvailabilitySlotService availabilitySlotService, ITreatmentService treatmentService,
         IEmailService emailService)
         {
             this._bookingRepository = bookingRepository;
-            this._availabilityService = availablilitySlotService;
+            this._availabilityService = availabilitySlotService;
             this._treatmentService = treatmentService;
             this._emailService = emailService;
         }
@@ -27,6 +27,19 @@ namespace sophieBeautyApi.services
         {
             var bookings = await _bookingRepository.GetAllAsync();
 
+
+            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            foreach (var b in bookings)
+            {
+                b.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(b.appointmentDate, ukZone);
+            }
+
+            return bookings;
+        }
+
+        public async Task<IEnumerable<booking>> getAllConfirmedBookings()
+        {
+            var bookings = await _bookingRepository.GetAllConfirmedBookingsAsync();
 
             var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
             foreach (var b in bookings)
@@ -73,7 +86,7 @@ namespace sophieBeautyApi.services
 
             if (booking.cost < 2)
             {
-                // expirytime doesnt matter due to status
+                // expirytime doesn't matter due to status
                 booking.bookingStatus = booking.status.Confirmed;
             }
 
@@ -94,10 +107,6 @@ namespace sophieBeautyApi.services
                 return new BookingResult("SERVER_ERROR");
             }
         }
-
-
-
-
 
         public async Task<BookingResult> createBookingAdmin(newBookingDTO newBooking)
         {
@@ -178,6 +187,24 @@ namespace sophieBeautyApi.services
             return result;
         }
 
+
+        public async Task<bool> userCanDeleteBooking(string bookingId)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+
+            if (booking == null)
+            {
+                return false;
+            }
+
+            if (booking.appointmentDate < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public async Task<BookingResult> delete(string id)
         {
 
@@ -186,6 +213,11 @@ namespace sophieBeautyApi.services
             if (booking == null)
             {
                 return new BookingResult("NOT_FOUND");
+            }
+
+            if (booking.appointmentDate < DateTime.UtcNow && booking.bookingStatus == booking.status.Confirmed)
+            {
+                return new BookingResult("CANNOT_DELETE_CONFIRMED_BOOKING");
             }
 
             var succeeded = await _bookingRepository.DeleteAsync(id);
@@ -397,30 +429,18 @@ namespace sophieBeautyApi.services
 
             return booking.expiryDate;
         }
+        
 
-        private static booking CreateClientBooking(booking source)
+        public async Task deleteYearOldBookingsAsync()
         {
-            var ukZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+            var cutoffDate = DateTime.UtcNow.AddYears(-1);
+            bool result = await _bookingRepository.deleteOldBookingsAsync(cutoffDate);
 
-            return new booking(
-                source.customerName,
-                TimeZoneInfo.ConvertTimeFromUtc(source.appointmentDate, ukZone),
-                source.email,
-                new List<string>(source.treatmentNames),
-                source.cost,
-                source.duration,
-                source.payByCard,
-                source.paid,
-                source.bookingStatus,
-                source.phoneNumber)
+            if (!result)
             {
-                Id = source.Id,
-                reminderSent = source.reminderSent,
-                remainingPayment = source.remainingPayment,
-                expiryDate = source.expiryDate,
-                stripePaymentId = source.stripePaymentId,
-                stripeId = source.stripeId
-            };
+                throw new Exception("Failed to delete year-old bookings.");
+            }
         }
+            
     }
 }

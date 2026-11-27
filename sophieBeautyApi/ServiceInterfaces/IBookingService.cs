@@ -6,6 +6,8 @@ namespace sophieBeautyApi.ServiceInterfaces
     {
         Task<IEnumerable<booking>> getAll();
 
+        Task<IEnumerable<booking>> getAllConfirmedBookings();
+
         Task<BookingResult> create(newBookingDTO newBooking);
 
         Task<booking?> getById(string id);
@@ -13,6 +15,8 @@ namespace sophieBeautyApi.ServiceInterfaces
         Task<bool> update(booking updatedBooking);
 
         Task<bool> markReminderSent(booking updatedBooking);
+
+        Task<bool> userCanDeleteBooking(string bookingId);
 
         Task<BookingResult> delete(string id);
 
@@ -34,5 +38,8 @@ namespace sophieBeautyApi.ServiceInterfaces
         Task<BookingResult> createBookingAdmin(newBookingDTO newBooking);
 
         Task<DateTime?> getExpiryTime(string bookingId);
+
+        Task deleteYearOldBookingsAsync();
+
     }
 }

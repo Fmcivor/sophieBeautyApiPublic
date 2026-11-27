@@ -10,5 +10,6 @@ namespace sophieBeautyApi.RepositoryInterfaces
         Task<bool> DeleteAsync(availablilitySlot slot);
         Task<IEnumerable<availablilitySlot>> GetSlotsByDateAsync(DateTime date);
         Task<bool> DeleteAllAsync();
+        Task<bool> deleteOldAvailabilitySlotsAsync(DateTime cutoffDate);
     }
 }

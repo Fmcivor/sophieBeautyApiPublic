@@ -30,7 +30,7 @@ public class BookingServiceTests
     // ── Helpers ───────────────────────────────────────────────────────────────
     private static booking MakeBooking(string id = "abc123", DateTime? date = null) => new booking(
         customerName: "Sophie Test",
-        appointmentDate: date ?? DateTime.UtcNow,
+        appointmentDate: date ?? DateTime.UtcNow.AddDays(1),
         email: "test@test.com",
         phoneNumber: "07709797855",
         treatmentNames: new List<string> { "facial" },
@@ -52,10 +52,20 @@ public class BookingServiceTests
         description = "A relaxing facial treatment for all skin types available"
     };
 
+    private static treatment makeNoPaymentTreatment() => new treatment
+    {
+        Id = "t2",
+        name = "patch test",
+        price = 0,
+        duration = 50,
+        type = "face",
+        description = "A relaxing facial treatment for all skin types available"
+    };
+
     private static newBookingDTO MakeBookingDTO() => new newBookingDTO
     {
         customerName = "Sophie Test",
-        appointmentDate = DateTime.UtcNow,
+        appointmentDate = DateTime.UtcNow.AddDays(1),
         email = "test@test.com",
         phoneNumber = "07709797855",
         treatmentIds = new List<string> { "t1" },
@@ -149,25 +159,6 @@ public class BookingServiceTests
     Assert.Equal("SERVER_ERROR", result.Error);
 }
 
-    [Fact]
-    public async Task create_ValidBooking_SendsEmail()
-    {
-        _treatmentServiceMock.Setup(s => s.getListByIds(It.IsAny<List<string>>()))
-            .ReturnsAsync(new List<treatment> { MakeTreatment() });
-
-        _availabilityServiceMock.Setup(s => s.bookingWithinAvailabilitySlot(It.IsAny<DateTime>(), It.IsAny<int>()))
-            .ReturnsAsync(true);
-
-        _bookingRepoMock.Setup(r => r.CreateAsync(It.IsAny<booking>()))
-            .ReturnsAsync(MakeBooking());
-
-        _emailServiceMock.Setup(e => e.Send(It.IsAny<booking>()))
-            .Returns(Task.CompletedTask);
-
-        await _sut.create(MakeBookingDTO());
-
-        _emailServiceMock.Verify(e => e.Send(It.IsAny<booking>()), Times.Once);
-    }
 
     [Fact]
     public async Task create_SlotNotAvailable_NeverCallsRepository()

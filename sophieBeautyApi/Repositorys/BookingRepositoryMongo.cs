@@ -22,6 +22,12 @@ namespace sophieBeautyApi.Repositorys
             return bookings;
         }
 
+        public async Task<IEnumerable<booking>> GetAllConfirmedBookingsAsync()
+        {
+            var bookings = await bookingsTable.Find(b => b.bookingStatus == booking.status.Confirmed).ToListAsync();
+            return bookings;
+        }
+
         public async Task<booking> CreateAsync(booking newBooking)
         {
             await bookingsTable.InsertOneAsync(newBooking);
@@ -133,6 +139,19 @@ namespace sophieBeautyApi.Repositorys
             var oldExpiredBookings = await bookingsTable.Find(filter).ToListAsync();
 
             return oldExpiredBookings;
+        }
+
+        public async Task<bool> deleteOldBookingsAsync(DateTime cutoffDate)
+        {
+            var filter = Builders<booking>.Filter.Lt(b => b.appointmentDate, cutoffDate);
+
+            var result = await bookingsTable.DeleteManyAsync(filter);
+
+
+            Console.WriteLine($"Bookings deleted: {result.DeletedCount}");
+
+
+            return result.IsAcknowledged;
         }
 
     }

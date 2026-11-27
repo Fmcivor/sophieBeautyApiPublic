@@ -39,6 +39,15 @@ namespace sophieBeautyApi.Controllers
             return Ok(bookings);
         }
 
+        [Authorize]
+        [HttpGet("allConfirmedBookings")]
+        public async Task<ActionResult> getAllConfirmedBookings()
+        {
+            var bookings = await _bookingService.getAllConfirmedBookings();
+
+            return Ok(bookings);
+        }
+
         [HttpPost("Create")]
         public async Task<ActionResult> create([FromBody] newBookingDTO newBooking)
         {
@@ -94,7 +103,7 @@ namespace sophieBeautyApi.Controllers
                 return StatusCode(500, "An error occurred generating a Stripe payment intent");
             }
 
-            createdBooking.expiryDate = result.Booking.expiryDate.AddSeconds(-25);
+            createdBooking.expiryDate = result.Booking.expiryDate.AddSeconds(-60);
             createdBooking.appointmentDate = TimeZoneInfo.ConvertTimeFromUtc(createdBooking.appointmentDate, ukZone);
 
             // return CreatedAtAction(nameof(create), result.Booking.Id);
@@ -178,6 +187,8 @@ namespace sophieBeautyApi.Controllers
                 {
                     case "NOT_FOUND":
                         return NotFound("Booking not found");
+                    case "CANNOT_DELETE_CONFIRMED_BOOKING":
+                        return BadRequest("Cannot delete a archive booking that has already been confirmed");
                     default:
                         return StatusCode(500, "An unexpected error occurred");
                 }
@@ -186,18 +197,24 @@ namespace sophieBeautyApi.Controllers
             return NoContent();
         }
 
-        // [HttpPost("availableTimes")]
-        // public async Task<ActionResult<IEnumerable<TimeSpan>>> getAvailableTimes([FromBody] DateTime selectedDate)
-        // {
-        //     var availableTimes = await _bookingService.getAvailableTimes(selectedDate);
+        [Authorize]
+        [HttpGet("canDelete/{id}")]
+        public async Task<ActionResult<bool>> canDelete(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return BadRequest("Id is required.");
+            }
 
-        //     return Ok(availableTimes);
-        // }
+            var result = await _bookingService.userCanDeleteBooking(id);
 
+            if (result == false)
+            {
+                return Ok(false);
+            }
 
-
-
-        //admin data
+            return Ok(true);
+        }
 
         [Authorize]
         [HttpPost("todaysAppts")]

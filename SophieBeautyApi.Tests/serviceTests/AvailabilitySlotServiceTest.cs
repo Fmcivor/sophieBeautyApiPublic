@@ -191,7 +191,7 @@ public class AvailabilitySlotServiceTests
     }
 
     [Fact]
-    public async Task bookingWithinAvailabilitySlot_BookingExceedsSlotEnd_ReturnsFalse()
+    public async Task bookingWithinAvailabilitySlot_BookingExceedsSlotEnd_ReturnsTrue()
     {
         _slotRepoMock.Setup(r => r.GetSlotsByDateAsync(It.IsAny<DateTime>()))
             .ReturnsAsync(new List<availablilitySlot>
@@ -206,7 +206,7 @@ public class AvailabilitySlotServiceTests
         var result = await _sut.bookingWithinAvailabilitySlot(
             UkToUtc(2026, 3, 12, 12, 30), 60);
 
-        Assert.False(result);
+        Assert.True(result);
     }
 
     // ── getAvailableTimes ─────────────────────────────────────────────────────

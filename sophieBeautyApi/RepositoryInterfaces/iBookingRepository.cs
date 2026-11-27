@@ -5,6 +5,7 @@ namespace sophieBeautyApi.RepositoryInterfaces
     public interface IBookingRepository
     {
         Task<IEnumerable<booking>> GetAllAsync();
+        Task<IEnumerable<booking>> GetAllConfirmedBookingsAsync();
         Task<booking> CreateAsync(booking newBooking);
         Task<booking?> GetByIdAsync(string id);
         Task<bool> UpdateAsync(booking updatedBooking);
@@ -19,5 +20,7 @@ namespace sophieBeautyApi.RepositoryInterfaces
         Task<IEnumerable<booking>> GetExpiredBookingsAsync(DateTime utcNow);
 
         Task<IEnumerable<booking>> getOldExpiredBookingsAsync(DateTime cutoffDate);
+
+        Task<bool> deleteOldBookingsAsync(DateTime cutoffDate);
     }
 }
